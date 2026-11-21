@@ -18,7 +18,7 @@ UDIPilot prowadzi urzędnika przez cały proces w jednej aplikacji przeglądarko
 Statusy sprawy (brak działań → zapytania do wydziałów → kwerenda → odpowiedź przygotowana → wysłana) i pełna historia działań aktualizują się automatycznie.
 
 ## Technologia
-Node.js 22 + Express, React + Vite, SQLite (wbudowany w Node), wyszukiwanie BM25 z polskim stemmingiem, unpdf i mammoth (PDF/Word), docx (eksport), Docker Compose. Wyłącznie darmowe komponenty open source.
+Node.js 22 + Express, React + Vite, SQLite (wbudowany w Node), wyszukiwanie BM25 z polskim stemmingiem, unpdf i mammoth (PDF/Word), docx (eksport), Docker Compose. Wyłącznie darmowe komponenty open source. Kod przygotowany z pomocą asystenta AI (Claude); koncepcja, testy i decyzje – zespół.
 
 ## Praca w zamkniętym systemie
 Prototyp działa **w całości bez Internetu i bez dużych modeli językowych** – terminy, wyszukiwanie, projekt pisma i anonimizacja opierają się na regułach i lokalnym wyszukiwaniu. Model językowy jest opcjonalny (interfejs zgodny z OpenAI: Ollama, vLLM) i służy tylko do redakcji stylu oraz drugiej warstwy anonimizacji, a jego wynik jest weryfikowany. Rekomendowany model do sieci zamkniętej: **Bielik 11B v2 Instruct** (Ollama/vLLM, 1 serwer z GPU 24 GB); alternatywnie **PLLuM**; bez GPU – Bielik 4.5B w kwantyzacji Q4.

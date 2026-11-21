@@ -79,6 +79,12 @@ Rekomendowany model offline: **Bielik-11B-v2.x-Instruct** (Ollama/vLLM, 1× GPU 
 - nagłówki bezpieczeństwa, historia działań w każdej sprawie,
 - wdrożenie: AD/LDAP + role, TLS przez reverse proxy, szyfrowanie wolumenu z bazą.
 
+## Rozwiązania zewnętrzne (§ 4 ust. 1 regulaminu)
+
+- Biblioteki open source: Express, Multer, React, Vite, unpdf (pdf.js), mammoth, docx, pdfkit (tylko do generowania plików testowych).
+- Lista wydziałów i biur UMB – z BIP Urzędu Miasta Bydgoszczy.
+- Kod przygotowany z pomocą asystenta AI (Claude); koncepcja, testy i decyzje – zespół LumenCode.
+
 ## Ograniczenia prototypu
 
 - Brak OCR skanów (w wersji docelowej: lokalny Tesseract `pol`); stary `.doc` – konwersja do DOCX.
