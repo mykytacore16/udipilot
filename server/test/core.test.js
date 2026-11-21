@@ -78,3 +78,19 @@ test('weryfikacja wykrywa liczby spoza źródeł', () => {
   assert.equal(v.issues.length, 1);
   assert.match(v.issues[0].reason, /999/);
 });
+
+test('odpowiedź wydziału bez „Ad N” rozdzielona między pytania; brak dopasowania = brak odpowiedzi', async () => {
+  const { buildDraft } = await import('../lib/draft.js');
+  const r = { id: 1, department: 'WSO', text: 'Wydział Spraw Obywatelskich\nW odpowiedzi na prośbę AIP informuję, że w latach 2021–2025 wydano zezwolenia dla nowych punktów sprzedaży napojów alkoholowych: 2021 – 84, 2025 – 72. W tym okresie cofnięto 23 zezwolenia.' };
+  const qs = [
+    { no: 1, text: 'Ile punktów sprzedaży napojów alkoholowych otrzymało nowe zezwolenia w latach 2021–2025?', departments: ['WSO'] },
+    { no: 2, text: 'Ile zezwoleń cofnięto w punktach sprzedaży napojów alkoholowych?', departments: ['WSO'] },
+    { no: 3, text: 'Ile kosztowała kampania reklamowa?', departments: ['WSO'] },
+  ];
+  const d = buildDraft({ wniosek: { number: 'X', received_at: '2026-11-20' }, questions: qs, responses: [r] });
+  const byNo = Object.fromEntries(d.blocks.filter((b) => b.questionNo).map((b) => [b.questionNo, b]));
+  assert.match(byNo[1].text, /wydano zezwolenia/);
+  assert.match(byNo[2].text, /cofnięto 23/);
+  assert.doesNotMatch(byNo[2].text, /wydano/);
+  assert.equal(byNo[3].kind, 'missing');
+});

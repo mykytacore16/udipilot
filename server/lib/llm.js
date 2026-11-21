@@ -70,7 +70,7 @@ export async function findPersonalData(text) {
 // Lepszy podział na pytania (gdy reguły nie poradzą sobie z prozą).
 export async function splitWithLLM(text) {
   const out = await chat([
-    { role: 'system', content: `Wyodrębnij z wniosku o informację publiczną listę odrębnych pytań/żądań. Każde jako pełne zdanie. Odpowiedz JSON: {"questions":["..."],"summary":"krótki temat wniosku (max 12 słów)"}. ${GUARD}` },
+    { role: 'system', content: `Wyodrębnij z wniosku o informację publiczną listę odrębnych pytań/żądań, każde jako pełne zdanie, zachowując sformułowania wnioskodawcy. Nie dziel jednego pytania na kilka (np. osobno dla każdego roku), nie dodawaj pytań, których nie ma we wniosku, pomiń prośby o formę lub adres odpowiedzi. Odpowiedz JSON: {"questions":["..."],"summary":"krótki temat wniosku (max 12 słów)"}. ${GUARD}` },
     { role: 'user', content: `<<<DANE>>>\n${text.slice(0, 12000)}\n<<<KONIEC>>>` },
   ], { json: true });
   return out;

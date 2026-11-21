@@ -11,7 +11,19 @@ export function segmentResponse(text) {
   const clean = text
     .replace(/\r/g, '')
     .split('\n')
-    .filter((l) => !/^\s*(z poważaniem|z wyrazami szacunku|w odpowiedzi na (?:pismo|maila|wiadomość|prośbę)|do wiadomości|sporządził|podpis|naczelnik wydziału\s*$|dyrektor biura\s*$)/i.test(l.trim()))
+    // formuła wstępna („W odpowiedzi na prośbę AIP informuję, że …”) – zostaw samą treść
+    .map((l) => {
+      const s = l.replace(/^\s*w odpowiedzi na [^:]*?(?:uprzejmie )?informuj[eę](?:,\s*że|\s*:)?\s*/i, '');
+      return s === l ? l : s.replace(/^./, (c) => c.toUpperCase());
+    })
+    .filter((l) => {
+      const t = l.trim();
+      if (!t) return false;
+      if (/^(z poważaniem|z wyrazami szacunku|do wiadomości|sporządził|podpis|do:|od:)/i.test(t)) return false;
+      // nagłówki i podpisy: „Wydział Ochrony Środowiska”, „Dyrektor Wydziału”, „Naczelnik …”
+      if (t.length < 70 && !/[.?!]$/.test(t) && /^(wydział|biuro|dyrektor|naczelnik|kierownik|zastępca|z up\.|urząd stanu|miejski rzecznik)/i.test(t)) return false;
+      return true;
+    })
     .join('\n');
   const re = /(?:^|\n)\s*(?:Ad\.?\s*(\d{1,2})|pkt\.?\s*(\d{1,2})|(\d{1,2})[.)])\s*[:.)-]?\s*/gi;
   const marks = [];
@@ -39,6 +51,12 @@ function answersFor(question, responses) {
     }
     const whole = segs[0]?.text || '';
     if (!whole) continue;
+    if (r.__assign) {
+      // zdania rozdzielone między pytania tego wydziału (każde zdanie do najlepiej pasującego pytania)
+      const mine = r.__assign.get(question.no);
+      if (mine?.length) out.push({ text: mine.join(' '), source: r, how: `zdania odpowiedzi ${r.department} przypisane do pytania ${question.no}` });
+      continue;
+    }
     if (assignedHere && r.__questionsForDept === 1) {
       out.push({ text: whole.replace(/\s+/g, ' '), source: r, how: `cała odpowiedź ${r.department}` });
     } else {
@@ -58,7 +76,33 @@ export function buildDraft(caseData, { type = 'udostepnienie', extension, bipLin
   const { wniosek, questions, responses } = caseData;
   const counts = {};
   for (const q of questions) for (const d of q.departments || []) counts[d] = (counts[d] || 0) + 1;
-  for (const r of responses) r.__questionsForDept = counts[r.department] || 0;
+  for (const r of responses) {
+    r.__questionsForDept = counts[r.department] || 0;
+    delete r.__assign;
+    const segs = segmentResponse(r.text);
+    if (r.__questionsForDept > 1 && !segs.some((s) => s.no != null) && segs[0]?.text) {
+      // odpowiedź bez „Ad N” na kilka pytań: przypisz każde zdanie do najlepiej pasującego pytania
+      const mineQs = questions.filter((q) => (q.departments || []).includes(r.department));
+      const sents = sentences(segs[0].text);
+      const sIdx = new BM25(sents.map((s, i) => ({ id: i, text: s })));
+      // dopasowanie zachłanne: najmocniejsze pary (pytanie, zdanie), każde zdanie i pytanie najwyżej raz
+      const pairs = [];
+      for (const q of mineQs) for (const h of sIdx.search(q.text, { limit: sents.length })) pairs.push({ no: q.no, si: h.doc.id, score: h.score });
+      pairs.sort((a, b) => b.score - a.score);
+      const owner = new Array(sents.length).fill(null);
+      const usedQ = new Set();
+      for (const p of pairs) {
+        if (usedQ.has(p.no) || owner[p.si] != null || p.score < 0.5) continue;
+        owner[p.si] = p.no;
+        usedQ.add(p.no);
+      }
+      // zdania bez pary → do pytania poprzedniego zdania (kontynuacja wypowiedzi)
+      for (let i = 0; i < owner.length; i++) if (owner[i] == null) owner[i] = owner[i - 1] ?? owner.find((o) => o != null) ?? null;
+      const assign = new Map();
+      owner.forEach((no, i) => { if (no == null) return; if (!assign.has(no)) assign.set(no, []); assign.get(no).push(sents[i]); });
+      if (assign.size) r.__assign = assign;
+    }
+  }
 
   const blocks = [];
   const T = (kind, text) => blocks.push({ id: `b${blocks.length + 1}`, kind, text, sources: [] });
@@ -75,8 +119,34 @@ export function buildDraft(caseData, { type = 'udostepnienie', extension, bipLin
 
   if (type === 'udostepnienie') {
     T('intro', `${intro}, działając na podstawie art. 2 ust. 1 i art. 10 ust. 1 ${law}, uprzejmie informuję:`);
-    for (const q of questions) {
-      const ans = answersFor(q, responses);
+    // Odpowiedź wydziału bez numeracji „Ad N”, której nie da się rozdzielić na pytania →
+    // jeden wspólny akapit dla wszystkich pytań tego wydziału (zamiast fałszywego „brak odpowiedzi”).
+    const answers = questions.map((q) => answersFor(q, responses));
+    const joint = new Map(); // responseId → { r, nos: [] }
+    questions.forEach((q, i) => {
+      if (answers[i].length) return;
+      const r = responses.find((x) => !x.__assign && (q.departments || []).includes(x.department) && !segmentResponse(x.text).some((s) => s.no != null) && segmentResponse(x.text)[0]?.text);
+      if (!r) return;
+      if (!joint.has(r.id)) joint.set(r.id, { r, nos: [], first: q.no });
+      joint.get(r.id).nos.push(q.no);
+    });
+    const jointByFirst = new Map([...joint.values()].map((j) => [j.first, j]));
+    const inJoint = new Set([...joint.values()].flatMap((j) => j.nos));
+    for (const [i, q] of questions.entries()) {
+      const ans = answers[i];
+      if (!ans.length && inJoint.has(q.no)) {
+        const j = jointByFirst.get(q.no);
+        if (!j) continue; // pytanie objęte wspólnym akapitem wcześniej
+        const label = j.nos.length > 1 ? `Ad ${j.nos.join(', ')}.` : `Ad ${q.no}.`;
+        const whole = segmentResponse(j.r.text)[0].text.replace(/\s+/g, ' ');
+        blocks.push({
+          id: `b${blocks.length + 1}`, kind: 'answer', questionNo: q.no,
+          question: questions.filter((x) => j.nos.includes(x.no)).map((x) => `${x.no}. ${x.text}`).join(' '),
+          text: `${label} ${whole}`,
+          sources: [{ responseId: j.r.id, department: j.r.department, file: j.r.filename, how: `wspólna odpowiedź ${j.r.department} na pytania ${j.nos.join(', ')}`, excerpt: truncate(whole, 400) }],
+        });
+        continue;
+      }
       if (!ans.length) {
         missing.push(q.no);
         blocks.push({ id: `b${blocks.length + 1}`, kind: 'missing', questionNo: q.no, question: q.text, text: `Ad ${q.no}. [BRAK ODPOWIEDZI WYDZIAŁU – uzupełnij lub wyślij ponowne zapytanie do: ${(q.departments || []).join(', ') || 'wydział nieprzypisany'}]`, sources: [] });

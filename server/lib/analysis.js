@@ -1,6 +1,6 @@
 // Analiza wniosku: metadane, podział na pytania, typ sprawy, propozycja wydziałów.
 import { readFileSync } from 'node:fs';
-import { BM25, tokens, truncate, sentences } from './text.js';
+import { BM25, tokens, truncate, sentences, overlap } from './text.js';
 
 const DEPTS = JSON.parse(readFileSync(new URL('../data/departments.json', import.meta.url), 'utf8'));
 export const departments = DEPTS;
@@ -26,7 +26,7 @@ export function extractMeta(text) {
   const dateLine = head.split('\n').find((l) => DATE_LIKE.test(l) && !/ustaw|rozporządz|dz\.\s?u|kodeks/i.test(l));
   let requestDate = dateLine ? findDate(dateLine) : null;
   if (requestDate && requestDate < '2015-01-01') requestDate = null;
-  let requester = text.match(/(?:Wnioskodawca|Wnioskodawczyni|Imię i nazwisko|Od)\s*:\s*([^\n,]+)/i)?.[1]?.trim() || null;
+  let requester = text.match(/(?:Wnioskodawca|Wnioskodawczyni|Imię i nazwisko|Od)\s*:\s*([^\n,]+)/i)?.[1]?.replace(/<[^>]*>/g, '').trim() || null;
   if (!requester) {
     const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean);
     const sig = lines.slice(-4).find((l) => /^[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż-]+$/.test(l));
@@ -58,37 +58,62 @@ function stripFrame(body) {
 
 const ITEM_RE = /^\s*(?:(\d{1,2})[.)]|([a-z])\)|[-•–*])\s+(.+)$/;
 const ASK_RE = /\?|^(proszę|wnoszę|czy |ile |jak[aiey]? |kto |kiedy |gdzie |w jaki|podanie|udostępnienie|przesłanie|wskazanie|informacj)/i;
+// Zdania o formie/sposobie odpowiedzi – to nie są pytania merytoryczne.
+const DELIVERY_RE = /^(?:odpowiedź|odpowiedzi|informację|informacje|dokumenty|dokumentację)\s+(?:proszę|prosimy)\s+(?:przesłać|udostępnić|przekazać|wysłać)|w formie elektronicznej na adres|na (?:wskazany )?adres e-?mail\.?$|^(?:odpowiedź|informację) (?:proszę|prosimy) (?:przesłać )?(?:pocztą|mailowo)/i;
+const END_LINE = /^(z poważaniem|z wyrazami|uzasadnienie|podpis|pozdrawiam)/i;
 
 export function splitQuestions(text) {
   const body = text.replace(/\r/g, '');
   const lines = body.split('\n');
   const items = [];
   let cur = null;
+  let lead = null; // zdanie wprowadzające listę („Proszę o udostępnienie dokumentacji dotyczącej basenu:”)
+  let lastPlain = null;
   for (const raw of lines) {
     const line = raw.trim();
     const m = line.match(ITEM_RE);
     if (m) {
       if (cur) items.push(cur);
+      if (!items.length && !cur && lastPlain && /:\s*$/.test(lastPlain)) lead = lastPlain.replace(/:\s*$/, '');
       cur = m[3];
-    } else if (cur && line && !/^(z poważaniem|z wyrazami|uzasadnienie|podpis|odpowiedź proszę|informację proszę|proszę o przesłanie odpowiedzi)/i.test(line) && !/^\s*$/.test(line) && line.length < 300 && !/:$/.test(line)) {
+    } else if (cur && line && !END_LINE.test(line) && !DELIVERY_RE.test(line) && line.length < 300 && !/:$/.test(line)) {
       cur += ' ' + line;
     } else if (cur) {
       items.push(cur);
       cur = null;
     }
+    if (!m && line) lastPlain = line;
   }
   if (cur) items.push(cur);
 
-  let qs = items.filter((q) => q.length > 12);
+  let qs = items.map((q) => q.replace(/[,;]\s*$/, '').trim()).filter((q) => q.length > 8 && !DELIVERY_RE.test(q));
   if (qs.length < 2) {
+    lead = null;
     // brak listy – szukamy zdań z pytaniami / prośbami w treści (bez nagłówka i podpisu)
     const flat = stripFrame(body);
     const sents = sentences(flat).filter((s) => ASK_RE.test(s.trim()) && s.length > 25);
-    const filtered = sents.filter((s) => !/^(odpowiedź|informację) proszę (przesłać|udostępnić) (na|drogą|pocztą|e-?mail)/i.test(s) && !/w formie elektronicznej na adres/i.test(s));
+    const filtered = sents.filter((s) => !DELIVERY_RE.test(s.trim()));
     if (filtered.length) qs = filtered;
   }
   if (!qs.length) qs = [truncate(stripFrame(body), 300)];
-  return qs.map((q, i) => ({ no: i + 1, text: q.replace(/\s+/g, ' ').trim() }));
+  return qs.map((q, i) => ({
+    no: i + 1,
+    text: q.replace(/\s+/g, ' ').trim().replace(/^./, (c) => c.toUpperCase()),
+    // krótkie pozycje listy bez kontekstu – kontekst ze zdania wprowadzającego (do routingu i podobnych spraw)
+    context: lead && q.length < 80 ? lead : undefined,
+  }));
+}
+
+// Pytania od modelu: tylko te, które mają oparcie w treści wniosku; bez duplikatów (np. „za każdy rok osobno”).
+export function cleanModelQuestions(questions, text) {
+  const out = [];
+  for (const q of questions) {
+    if (typeof q !== 'string' || q.trim().length < 10) continue;
+    if (overlap(q, text) < 0.5) continue;
+    if (out.some((p) => overlap(q, p) >= 0.75 && overlap(p, q) >= 0.75)) continue;
+    out.push(q.trim());
+  }
+  return out;
 }
 
 // ---------- Typ sprawy (wskazówki prawne) ----------
@@ -156,7 +181,7 @@ const ANAPHORA = /\b(tych|tego|tej|te|ten|tym|tymi|powyższ\w*|wskazan\w*|tej in
 export function routeQuestions(questions, archiveIndex) {
   const out = [];
   for (const q of questions) {
-    let sug = routeQuestion(q.text, archiveIndex);
+    let sug = routeQuestion(q.context ? `${q.context} ${q.text}` : q.text, archiveIndex);
     const prev = out[out.length - 1]?.suggestions?.[0];
     const weak = !sug.length || sug[0].score < 1.1;
     if (prev && (ANAPHORA.test(q.text) || weak)) {

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { db, J, log } from './db.js';
 import { extractFromFile, httpError } from './lib/extract.js';
 import { BM25, truncate } from './lib/text.js';
-import { departments, extractMeta, splitQuestions, classify, routeQuestions, summarize, RESPONSE_TYPES } from './lib/analysis.js';
+import { departments, extractMeta, splitQuestions, classify, routeQuestions, summarize, RESPONSE_TYPES, cleanModelQuestions } from './lib/analysis.js';
 import { computeDeadline, maxExtension, urgency, today, diffDays } from './lib/deadlines.js';
 import { analyze as findPII, mergeOverlaps, assignLabels } from './lib/anonymize.js';
 import { buildDraft, verifyDraft, draftToText, departmentRequestText } from './lib/draft.js';
@@ -172,7 +172,8 @@ app.post('/api/wnioski/analyze', upload.single('file'), wrap(async (req, res) =>
   if (llmStatus().enabled && req.body?.useAi !== 'false' && !numbered) {
     try {
       const out = await splitWithLLM(text);
-      if (out.questions?.length) { questions = out.questions.map((q, i) => ({ no: i + 1, text: q })); aiUsed = true; }
+      const qs = cleanModelQuestions(out.questions || [], text);
+      if (qs.length) { questions = qs.map((q, i) => ({ no: i + 1, text: q })); aiUsed = true; }
       if (out.summary) summary = out.summary;
     } catch (e) { console.warn('LLM split failed:', e.message); }
   }
