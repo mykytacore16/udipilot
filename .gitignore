@@ -5,3 +5,4 @@ data/*.db*
 .env
 .claude/
 data/settings.json
+UDIPilot.cmd

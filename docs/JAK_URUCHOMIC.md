@@ -7,7 +7,9 @@ Internet potrzebny tylko do pobrania kodu i bibliotek – sama aplikacja działa
 
 1. Na https://github.com/mykytacore16/udipilot kliknij **Code → Download ZIP** i rozpakuj.
 2. **Windows:** kliknij dwukrotnie **`INSTALUJ.bat`**. **macOS/Linux:** w terminalu `./instaluj.sh`.
-3. Instalator sam: doinstaluje Node.js (jeśli brak), zbuduje aplikację, wczyta dane demo, zapyta o lokalny model Bielik (opcjonalnie, ok. 5 GB), utworzy skrót **UDIPilot** na pulpicie i otworzy **http://localhost:3000**.
+3. W przeglądarce otworzy się **kreator instalacji**: sprawdzi komputer, pozwoli włączyć/wyłączyć lokalny model Bielik (ok. 5 GB) i skrót na pulpicie, pokaże postęp instalacji, a na końcu przycisk **Uruchom UDIPilot** otworzy **http://localhost:3000**.
+
+> **Smart App Control / „Windows ochronił komputer”**: przed rozpakowaniem kliknij ZIP prawym przyciskiem → Właściwości → zaznacz **Odblokuj**. Albo bez pliku .bat, w PowerShell w folderze projektu: `node installerinstaller.js`.
 
 Kolejne uruchomienia: skrót na pulpicie lub **`URUCHOM.bat`** / `./uruchom.sh`.
 

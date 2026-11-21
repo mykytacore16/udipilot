@@ -5,7 +5,7 @@ Działa **w 100% offline** (reguły, wyszukiwanie lokalne). Model językowy jest
 
 ## Szybki start
 
-**Instalacja jednym kliknięciem:** pobierz repozytorium (Code → Download ZIP), rozpakuj i uruchom **`INSTALUJ.bat`** (Windows) lub **`./instaluj.sh`** (macOS/Linux). Instalator sam doinstaluje Node.js (winget/Homebrew), zbuduje aplikację, wczyta dane demo, opcjonalnie zainstaluje Ollama + Bielik, utworzy skrót „UDIPilot” na pulpicie i otworzy http://localhost:3000. Kolejne uruchomienia: **`URUCHOM.bat`** / `./uruchom.sh`.
+**Instalacja jednym kliknięciem:** pobierz repozytorium (Code → Download ZIP), rozpakuj i uruchom **`INSTALUJ.bat`** (Windows) lub **`./instaluj.sh`** (macOS/Linux). Otworzy się **kreator instalacji w przeglądarce** (styl aplikacji): kontrola komputera, przełączniki opcji (lokalny Bielik, skrót na pulpicie), postęp każdego kroku z paskiem pobierania modelu i przycisk **Uruchom UDIPilot**. Brakujący Node.js instalowany jest automatycznie (winget/Homebrew). Kreator: `installer/` – tylko moduły wbudowane Node.js. Kolejne uruchomienia: **`URUCHOM.bat`** / `./uruchom.sh`.
 
 Ręcznie:
 
