@@ -8,6 +8,7 @@ import { go } from '../App.jsx';
 const TYPES = [
   ['udostepnienie', 'Udostępnienie informacji', 'art. 10 ust. 1, art. 13 ust. 1'],
   ['przedluzenie', 'Zawiadomienie o przedłużeniu (kwerenda)', 'art. 13 ust. 2'],
+  ['doprecyzowanie', 'Wezwanie do doprecyzowania wniosku', 'termin biegnie od doprecyzowania'],
   ['przetworzona', 'Wezwanie – informacja przetworzona', 'art. 3 ust. 1 pkt 1'],
   ['bip', 'Odesłanie do BIP', 'art. 10 ust. 1'],
   ['nie_ip', 'To nie jest informacja publiczna', 'art. 1 ust. 1, art. 6'],
@@ -51,7 +52,7 @@ export default function Sprawa({ id, departments, llm }) {
             </div>
             <div style={{ fontSize: 15, marginTop: 6 }}>{w.summary}</div>
             <div className="muted small" style={{ marginTop: 4 }}>
-              {w.requester || 'Wnioskodawca nieustalony'}{w.requester_contact ? ` · ${w.requester_contact}` : ''} · wpływ {plDate(w.received_at)} · forma odpowiedzi: {w.delivery || '—'} · prowadzi: <b>{w.initials || '—'}</b>
+              {w.requester || 'Wnioskodawca nieustalony'}{w.requester_contact ? ` · ${w.requester_contact}` : ''} · wpływ {plDate(w.received_at)} · forma odpowiedzi: {w.delivery || '—'} · osoba odpowiedzialna: <b>{w.initials || '—'}</b>
             </div>
           </div>
           <div className={`deadline-box ${w.urgency.level}`}>
@@ -64,7 +65,7 @@ export default function Sprawa({ id, departments, llm }) {
         <div className="stepper">
           {STEPS.map(([s, l]) => {
             const order = ['nowy', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
-            const ci = order.indexOf(w.status);
+            const ci = order.indexOf(w.status === 'doprecyzowanie' ? 'nowy' : w.status);
             const si = order.indexOf(s);
             let cls = si < ci ? 'done' : si === ci ? 'cur' : '';
             if (s === 'kwerenda' && !w.extension_until && ci > si) cls = '';
@@ -72,7 +73,21 @@ export default function Sprawa({ id, departments, llm }) {
             return <div key={s} className={`step ${cls}`}>{l}{s === 'kwerenda' && w.extension_until ? ` (do ${plDate(w.extension_until)})` : ''}</div>;
           })}
         </div>
+        {w.import_notes?.length > 0 && (
+          <div className="alert warn small" style={{ marginTop: 14 }}>
+            <b>Uwagi z importu arkusza rejestru:</b>
+            {w.import_notes.map((n, i) => <div key={i}>• {n}</div>)}
+          </div>
+        )}
+        {w.status === 'doprecyzowanie' && (
+          <div className="alert info small" style={{ marginTop: 14 }}>
+            Wezwano do doprecyzowania wniosku{w.clarification_requested_at ? ` (${plDate(w.clarification_requested_at)})` : ''}. Termin na odpowiedź jest wstrzymany i biegnie na nowo od dnia otrzymania doprecyzowania.
+          </div>
+        )}
         <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
+          {w.status === 'doprecyzowanie'
+            ? <button className="btn primary" onClick={() => setModal('doprec-in')}>✓ Wpłynęło doprecyzowanie</button>
+            : w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('doprec')}>❓ Wezwij do doprecyzowania</button>}
           {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('kwerenda')}>⏳ Kwerenda / przedłuż termin</button>}
           {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('sent')}>✉ Oznacz jako wysłaną</button>}
         </div>
@@ -108,6 +123,21 @@ export default function Sprawa({ id, departments, llm }) {
         </div>
       </div>
 
+      {(modal === 'doprec' || modal === 'doprec-in') && (
+        <DateModal
+          title={modal === 'doprec' ? 'Wezwanie do doprecyzowania wniosku' : 'Wpłynęło doprecyzowanie wniosku'}
+          text={modal === 'doprec'
+            ? 'Termin na udostępnienie informacji zostanie wstrzymany do czasu doprecyzowania. Treść wezwania wygenerujesz w zakładce 3 („Wezwanie do doprecyzowania wniosku”).'
+            : 'Termin 14 dni zostanie policzony od nowa od daty otrzymania doprecyzowania (z przesunięciem z sobót i świąt).'}
+          label={modal === 'doprec' ? 'Data wezwania' : 'Data wpływu doprecyzowania'}
+          onClose={() => setModal(null)}
+          onSave={async (date) => {
+            const url = modal === 'doprec' ? `/api/wnioski/${id}/doprecyzowanie` : `/api/wnioski/${id}/doprecyzowanie/wplynelo`;
+            const r = await call(() => api.post(url, { date }), modal === 'doprec' ? 'Status: doprecyzowanie wniosku – termin wstrzymany' : 'Termin przeliczony od daty doprecyzowania');
+            if (r) setModal(null);
+          }}
+        />
+      )}
       {modal === 'kwerenda' && <KwerendaModal w={w} onClose={() => setModal(null)} onSave={async (b) => { const r = await call(() => api.post(`/api/wnioski/${id}/kwerenda`, b), 'Termin przedłużony – przygotuj zawiadomienie dla wnioskodawcy (zakładka 3).'); if (r) setModal(null); }} />}
       {modal === 'sent' && <SentModal pending={pending} hasDraft={!!c.draft} onClose={() => setModal(null)} onSave={async (date) => { const r = await call(() => api.post(`/api/wnioski/${id}/sent`, { date }), 'Oznaczono jako wysłaną. Odpowiedź trafiła do archiwum wiedzy.'); if (r) setModal(null); }} />}
     </div>
@@ -438,6 +468,19 @@ function KwerendaModal({ w, onClose, onSave }) {
         <label className="field">Nowy termin<input type="date" value={until} max={max} onChange={(e) => setUntil(e.target.value)} /></label>
         <label className="field">Powód opóźnienia<input value={reason} onChange={(e) => setReason(e.target.value)} /></label>
         <div className="faint small">Po zapisaniu wygeneruj w zakładce 3 „Zawiadomienie o przedłużeniu”.</div>
+      </div>
+    </Modal>
+  );
+}
+
+function DateModal({ title, text, label, onClose, onSave }) {
+  const d = new Date();
+  const [date, setDate] = useState(new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10));
+  return (
+    <Modal title={title} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Anuluj</button><button className="btn primary" onClick={() => onSave(date)}>Zapisz</button></>}>
+      <div className="stack">
+        <div className="alert info small">{text}</div>
+        <label className="field" style={{ maxWidth: 220 }}>{label}<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
       </div>
     </Modal>
   );

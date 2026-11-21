@@ -8,6 +8,8 @@ import { db, log } from './db.js';
 import { computeDeadline, today, addDays, shiftToWorkingDay } from './lib/deadlines.js';
 import { splitQuestions, routeQuestions, classify, extractMeta, summarize } from './lib/analysis.js';
 import { BM25 } from './lib/text.js';
+import { parseRegistry, numberSeq, makeNumber } from './lib/registry.js';
+import { importRecords } from './importer.js';
 
 export function seedDemo() {
 db.exec("DELETE FROM historia; DELETE FROM projekty; DELETE FROM odpowiedzi; DELETE FROM pytania; DELETE FROM wnioski; DELETE FROM dokumenty; DELETE FROM sqlite_sequence;");
@@ -86,16 +88,9 @@ const W = [
     target: wd(9), status: 'nowy', initials: 'MK',
     text: `Wnioskodawca: Ewa Pawlak\ne-mail: ewa.pawlak@example.com\n\nWnoszę o udostępnienie informacji:\n1. Jaka jest obecna stawka opłaty za gospodarowanie odpadami komunalnymi?\n2. Ile wynosiły zaległości z tytułu tej opłaty na koniec 2025 r.?\n3. Ile punktów selektywnej zbiórki odpadów komunalnych (PSZOK) działa w mieście?`,
   },
-  // rok poprzedni – do przełącznika lat
   {
-    received: '2025-11-03', status: 'wyslana', initials: 'MK', answered: '2025-11-14',
-    text: `Wnioskodawca: Adam Kowalczyk\ne-mail: a.kowalczyk@example.com\n\nIle kamer monitoringu miejskiego funkcjonuje w Bydgoszczy?`,
-    responses: [{ department: 'BCB', filename: 'BCB.docx', text: 'W systemie monitoringu wizyjnego miasta funkcjonuje 286 kamer.' }],
-  },
-  {
-    received: '2025-12-01', status: 'wyslana', initials: 'AN', answered: '2025-12-12',
-    text: `Wnioskodawca: Iwona Kamińska\n\nProszę o informację o liczbie licencji taxi wydanych w 2025 r.`,
-    responses: [{ department: 'WUK', filename: 'WUK.docx', text: 'W 2025 r. wydano 171 licencji na wykonywanie transportu drogowego taksówką.' }],
+    target: wd(2), status: 'doprecyzowanie', initials: 'JW', clarificationAsked: addDays(T, -3),
+    text: `Wnioskodawca: Tomasz Krawczyk\ne-mail: t.krawczyk@example.com\n\nProszę o udostępnienie informacji publicznej dotyczącej inwestycji na osiedlu, zgodnie z załączonymi wnioskami.`,
   },
 ];
 
@@ -104,12 +99,16 @@ const insW = db.prepare(`INSERT INTO wnioski (number, year, received_at, request
 const insQ = db.prepare('INSERT INTO pytania (wniosek_id, no, text, departments, suggestions) VALUES (?, ?, ?, ?, ?)');
 const insR = db.prepare('INSERT INTO odpowiedzi (wniosek_id, department, filename, text) VALUES (?, ?, ?, ?)');
 
+// 10 wniosków testowych z arkusza UMB („Schemat kalendarium”) – dokładnie w formacie organizatora.
+importRecords(parseRegistry(readFileSync(new URL('../samples/umb/WNIOSKI O UDOSTĘPNIANIE INFORMACJI PUBLICZNEJ.xlsx', import.meta.url))), idx);
+
+// Bieżące wnioski demonstracyjne – numeracja kontynuuje arkusz UMB (ostatni: BKS.IV.1431.599.2026).
 const rows = W.map((w) => ({ ...w, received: w.received || receivedFor(w.target) })).sort((a, b) => a.received.localeCompare(b.received));
 const seq = {};
 for (const w of rows) {
   const year = +w.received.slice(0, 4);
-  seq[year] = (seq[year] || (year === 2025 ? 402 : 180)) + 1;
-  const number = `${seq[year]}/${year}`;
+  seq[year] = (seq[year] || Math.max(0, ...db.prepare('SELECT number FROM wnioski WHERE year = ?').all(year).map((r) => numberSeq(r.number)))) + 1;
+  const number = makeNumber(seq[year], year);
   const dl = computeDeadline(w.received);
   const meta = extractMeta(w.text);
   const questions = splitQuestions(w.text);
@@ -118,6 +117,7 @@ for (const w of rows) {
     w.initials, summarize(w.text, questions), meta.requester, meta.email, meta.delivery, w.text, w.demo ? 'wniosek_pozwolenia_na_budowe.pdf' : null,
     JSON.stringify(classify(w.text).hints), w.answered || null);
   const id = Number(info.lastInsertRowid);
+  if (w.clarificationAsked) db.prepare('UPDATE wnioski SET clarification_requested_at = ?, sheet_deadline = deadline WHERE id = ?').run(w.clarificationAsked, id);
   for (const q of routeQuestions(questions, idx)) {
     insQ.run(id, q.no, q.text, JSON.stringify(q.departments), JSON.stringify(q.suggestions));
   }

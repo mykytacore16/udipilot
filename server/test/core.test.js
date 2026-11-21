@@ -55,6 +55,23 @@ test('segmentacja odpowiedzi wydziału po „Ad N”', () => {
   assert.deepEqual(s.map((x) => x.no), [1, 2]);
 });
 
+test('import arkusza UMB: 10 wniosków, wykryte niezgodności i doprecyzowanie', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { parseRegistry } = await import('../lib/registry.js');
+  const recs = parseRegistry(readFileSync(new URL('../../samples/umb/WNIOSKI O UDOSTĘPNIANIE INFORMACJI PUBLICZNEJ.xlsx', import.meta.url)));
+  assert.equal(recs.length, 10);
+  const r15 = recs.find((r) => r.number === 'BKS.IV.1431.15.2026');
+  assert.ok(r15.notes.some((n) => /wcześniejsza niż data wpływu/.test(n)));
+  const r509 = recs.find((r) => r.number === 'BKS.IV.1431.509.2026');
+  assert.equal(r509.clarification.newDeadline, '2026-09-18');
+  assert.ok(recs.find((r) => r.number === 'BKS.IV.1431.543.2026').notes.some((n) => /po terminie/.test(n)));
+});
+
+test('anonimizacja: kategorie szczególne z katalogu UMB', () => {
+  const labels = analyze('Pani Anna Nowak choruje na cukrzycę, korzysta z pomocy MOPS i była karana za wykroczenie.').map((e) => e.label);
+  for (const l of ['Stan zdrowia / niepełnosprawność', 'Korzystanie z pomocy społecznej', 'Karalność / wyroki']) assert.ok(labels.includes(l), `brak: ${l}`);
+});
+
 test('weryfikacja wykrywa liczby spoza źródeł', () => {
   const draft = { blocks: [{ id: 'b1', kind: 'answer', text: 'Ad 1. Wydano 842 decyzje i 999 zezwoleń.', sources: [{ excerpt: 'Wydano 842 decyzje.' }] }] };
   const v = verifyDraft(draft, [{ text: 'Ad 1. Wydano 842 decyzje.' }]);

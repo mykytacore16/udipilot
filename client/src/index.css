@@ -140,6 +140,9 @@ tr.u-today td:first-child { box-shadow: inset 4px 0 0 var(--orange); }
 tr.u-tomorrow td { background: #fffbe6; }
 tr.u-tomorrow td:first-child { box-shadow: inset 4px 0 0 #e0b400; }
 tr.u-done td { color: var(--muted); }
+tr.u-paused td { background: #f6f2fd; }
+tr.u-paused td:first-child { box-shadow: inset 4px 0 0 var(--violet); }
+.ev.deadline.paused { background: var(--violet-soft); border-color: var(--violet); }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .legend .l-red::before { background: var(--red); }

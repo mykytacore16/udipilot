@@ -95,6 +95,7 @@ export function splitQuestions(text) {
 export const RESPONSE_TYPES = {
   udostepnienie: { label: 'Udostępnienie informacji', basis: 'art. 10 ust. 1 i art. 13 ust. 1 u.d.i.p.', form: 'pismo' },
   przedluzenie: { label: 'Zawiadomienie o przedłużeniu terminu (kwerenda)', basis: 'art. 13 ust. 2 u.d.i.p.', form: 'pismo' },
+  doprecyzowanie: { label: 'Wezwanie do doprecyzowania wniosku', basis: 'art. 2 i art. 13 u.d.i.p. (orzecznictwo NSA)', form: 'pismo' },
   przetworzona: { label: 'Wezwanie do wykazania szczególnie istotnego interesu publicznego', basis: 'art. 3 ust. 1 pkt 1 u.d.i.p.', form: 'pismo' },
   bip: { label: 'Wskazanie, że informacja jest opublikowana w BIP', basis: 'art. 10 ust. 1 u.d.i.p. (a contrario) / orzecznictwo', form: 'pismo' },
   nie_ip: { label: 'Informacja, że żądanie nie dotyczy informacji publicznej', basis: 'art. 1 ust. 1 i art. 6 u.d.i.p.', form: 'pismo' },
@@ -104,6 +105,8 @@ export const RESPONSE_TYPES = {
 const HINTS = [
   { type: 'przetworzona', re: /zestawieni|analiz|w podziale na|za lata|za okres (?:ostatnich|od)|wszystkich (?:umów|faktur|decyzji|dokumentów)|kopi[ei] wszystkich|ze wskazaniem każdej|przygotowanie raportu/i,
     why: 'Wniosek może wymagać przetworzenia (zestawienia, analizy z wielu dokumentów). Rozważ wezwanie do wykazania szczególnie istotnego interesu publicznego.' },
+  { type: 'doprecyzowanie', re: /zgodnie z załączonymi wnioskami|wskazanych ulic|wskazan[ey]ch (?:w załączniku|powyżej)|dot\.\s*(?:sprawy|tematu)\s*$|^\s*[A-ZĄĆĘŁŃÓŚŹŻ][\p{L}\s]{0,30}\.?\s*$/u,
+    why: 'Przedmiot wniosku może być nieprecyzyjny lub odsyła do załączników, których brak – rozważ wezwanie do doprecyzowania (termin biegnie od doprecyzowania).' },
   { type: 'nie_ip', re: /porad|interpretacj|opini[ię] urzędu|czy mogę|czy muszę|jak mam postąpić|wyjaśnienie przepisów|prywatn[a-z]+ sprawy/i,
     why: 'Pytanie może dotyczyć porady lub interpretacji prawa – takie żądania zwykle nie są informacją publiczną.' },
   { type: 'bip', re: /budżet(?:u)? miasta|uchwał[ay]? (?:rady|budżetow)|zarządzeni[ea] prezydenta|oświadczeni[ea] majątkow|rejestr umów|protokoł[ yów]+ z sesji|plan zamówień/i,
@@ -173,7 +176,7 @@ export function summarize(text, questions) {
   const subj = extractMeta(text).subject;
   if (subj) return truncate(subj, 120);
   const first = questions[0]?.text || text;
-  return truncate(first.replace(/^(proszę o|wnoszę o)\s+(udostępnienie|podanie|przesłanie)\s+(informacji\s+)?/i, ''), 120);
+  return truncate(first.replace(/^(proszę o|wnoszę o)\s+(udostępnienie|podanie|przesłanie)\s+(informacji(\s+publicznej)?\s+)?/i, '').replace(/^(dotycząc\w*|dot\.|w sprawie)\s+/i, '').replace(/^./, (c) => c.toUpperCase()), 120);
 }
 
 export { tokens };

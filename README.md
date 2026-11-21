@@ -29,11 +29,19 @@ Testy: `npm test`. Pliki do testów jury: `samples/` (generowane `npm run sample
 | 5. Kalendarz: 10 wniosków, kolejność, podświetlenie | **Rejestr wniosków** (tabela + widok kalendarza), kolory: po terminie / dziś / jutro / kwerenda |
 | 6. Wgrywanie ustaw i archiwalnych odpowiedzi | **Baza wiedzy** (PDF/DOCX/TXT, import JSON) |
 
-Gotowa sprawa demo: **184/2026** (termin w najbliższy dzień roboczy, odpowiedź WAB wgrana, brak odpowiedzi WGK na pyt. 4 – system to wykrywa).
+Gotowa sprawa demo: **BKS.IV.1431.603.2026** (termin w najbliższy dzień roboczy, odpowiedź WAB wgrana, brak odpowiedzi WGK na pyt. 4 – system to wykrywa).
+
+## Materiały Urzędu Miasta Bydgoszczy (wykorzystane)
+
+- **Schemat kalendarium** (`samples/umb/WNIOSKI O UDOSTĘPNIANIE INFORMACJI PUBLICZNEJ.xlsx`) – 10 wniosków testowych jest wczytywanych do rejestru; **import i eksport XLSX w tym samym układzie kolumn** (Lp., Numer sprawy, Wnioskodawca, Przedmiot zapytania, Data wpływu, Termin odpowiedzi, Data odpowiedzi, Osoba odpowiedzialna, Pozostało dni). Przy imporcie system przelicza terminy ustawowe i **wskazuje niezgodności w arkuszu** (termin niezgodny z ustawą, odpowiedź po terminie, data odpowiedzi przed datą wpływu, „doprecyzowanie wniosku”).
+- **Zarządzenie nr 536/2024** Prezydenta Miasta Bydgoszczy – w bazie wiedzy; procedura AIP → wydziały (§ 9–11) odwzorowana w treści zapytań do wydziałów (termin, adres bip@um.bydgoszcz.pl, anonimizacja przed przekazaniem, informacja przetworzona, projekt decyzji odmownej).
+- **Dane podlegające anonimizacji** – cały katalog obsługiwany przez anonimizator (w tym dane szczególne: zdrowie, sytuacja rodzinna i majątkowa, pomoc społeczna, poglądy, karalność, miejsce urodzenia, nr działki, tajemnica przedsiębiorstwa; NIP firm traktowany jako jawny).
+- Numeracja spraw w formacie UMB: `BKS.IV.1431.<nr>.<rok>`.
 
 ## Funkcje
 
-- **Rejestr i kalendarz** – Lp., nr, data wpływu, termin, dni do terminu, opis, wydziały, status, inicjały, data odpowiedzi, wybór roku; widok miesięczny ze świętami.
+- **Rejestr i kalendarz** – kolumny jak w arkuszu UMB + status i wydziały, wybór roku, import/eksport Excel; widok miesięczny ze świętami.
+- **Doprecyzowanie wniosku** – wezwanie wstrzymuje termin; po wpływie doprecyzowania termin 14 dni liczony od nowa; gotowe pismo z wezwaniem.
 - **Terminy liczone zgodnie z prawem** – 14 dni (art. 13 ust. 1 u.d.i.p.), przesunięcie z soboty/święta (art. 57 § 4 KPA, w tym Wigilia od 2025 r.), kwerenda maks. 2 miesiące (art. 13 ust. 2) z walidacją.
 - **Statusy** – brak działań → zapytania do wydziałów → kwerenda → odpowiedź przygotowana → wysłana; aktualizowane automatycznie przy każdym kroku, pełna historia sprawy.
 - **Podział wniosku na pytania** i **propozycja wydziałów** UMB (lista z BIP) – kompetencje + „głos” podobnych spraw z archiwum + kontekst poprzedniego pytania; z uzasadnieniem.
@@ -69,7 +77,9 @@ Skalowanie: setki/tysiące archiwalnych dokumentów – indeks BM25 w pamięci (
 | Projekt pisma | szablony + treść wydziałów | LLM tylko redaguje styl, wynik weryfikowany |
 | Anonimizacja | reguły + sumy kontrolne | LLM jako 2. warstwa |
 
-Rekomendowany model offline: **Bielik-11B-v2.x-Instruct** (Ollama/vLLM, 1× GPU 24 GB) lub **PLLuM**; bez GPU – Bielik 4.5B/1.5B w kwantyzacji Q4 na CPU.
+**Przetestowane lokalnie:** Ollama 0.40 + `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` (5,1 GB) na laptopie z RTX 3060 6 GB – podział wniosku na pytania ok. 4 s, redakcja akapitu 1–3 s, druga warstwa anonimizacji ok. 8 s. Konfiguracja: skopiuj `.env.example` do `.env` i ustaw `LLM_BASE_URL=http://127.0.0.1:11434/v1`, `LLM_MODEL=SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`. Redakcja przez model to zawsze propozycja „przed/po” do akceptacji – model potrafi subtelnie zmienić sformułowanie.
+
+Rekomendowany model docelowy (serwer Urzędu): **Bielik-11B-v2.x-Instruct** (Ollama/vLLM, 1× GPU 24 GB) lub **PLLuM**; bez GPU – Bielik 4.5B/1.5B w kwantyzacji Q4 na CPU.
 
 ## Bezpieczeństwo
 

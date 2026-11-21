@@ -39,11 +39,12 @@ export const plDate = (s) => (s ? s.slice(0, 10).split('-').reverse().join('.') 
 
 export const STATUS = {
   nowy: { label: 'Brak działań', cls: '' },
+  doprecyzowanie: { label: 'Doprecyzowanie wniosku', cls: 'violet' },
   w_wydzialach: { label: 'Zapytania w wydziałach', cls: 'blue' },
   kwerenda: { label: 'Kwerenda', cls: 'violet' },
   przygotowana: { label: 'Odpowiedź przygotowana', cls: 'yellow' },
   wyslana: { label: 'Odpowiedź wysłana', cls: 'green' },
 };
-export const STATUS_ORDER = ['nowy', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
+export const STATUS_ORDER = ['nowy', 'doprecyzowanie', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
 
-export const URGENCY_CLS = { overdue: 'red', today: 'orange', tomorrow: 'yellow', soon: 'blue', ok: '', done: 'green' };
+export const URGENCY_CLS = { overdue: 'red', today: 'orange', tomorrow: 'yellow', soon: 'blue', ok: '', done: 'green', paused: 'violet' };

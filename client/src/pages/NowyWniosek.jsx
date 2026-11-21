@@ -75,8 +75,8 @@ export default function NowyWniosek({ departments }) {
             <div className="grid-2">
               <label className="field">Wnioskodawca<input value={a.meta.requester || ''} onChange={(e) => upd({ meta: { ...a.meta, requester: e.target.value } })} /></label>
               <label className="field">Kontakt (e-mail)<input value={a.meta.email || ''} onChange={(e) => upd({ meta: { ...a.meta, email: e.target.value } })} /></label>
-              <label className="field">Nr wniosku<input placeholder="nadawany automatycznie" value={a.number || ''} onChange={(e) => upd({ number: e.target.value })} /></label>
-              <label className="field">Inicjały osoby prowadzącej<input value={a.initials} maxLength={4} onChange={(e) => upd({ initials: e.target.value.toUpperCase() })} /></label>
+              <label className="field">Numer sprawy<input placeholder="automatycznie: BKS.IV.1431.<nr>.<rok>" value={a.number || ''} onChange={(e) => upd({ number: e.target.value })} /></label>
+              <label className="field">Osoba odpowiedzialna (inicjały)<input value={a.initials} maxLength={40} onChange={(e) => upd({ initials: e.target.value })} /></label>
             </div>
             <label className="field">Krótki opis tematu<input value={a.summary || ''} onChange={(e) => upd({ summary: e.target.value })} /></label>
             <div className="alert info">

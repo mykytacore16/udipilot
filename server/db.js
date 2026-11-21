@@ -78,6 +78,12 @@ CREATE TABLE IF NOT EXISTS historia (
 );
 `);
 
+// Migracje (kolumny dodane po pierwszej wersji)
+const cols = new Set(db.prepare('PRAGMA table_info(wnioski)').all().map((c) => c.name));
+for (const [name, type] of [['clarification_requested_at', 'TEXT'], ['clarification_received_at', 'TEXT'], ['import_notes', 'TEXT'], ['sheet_deadline', 'TEXT']]) {
+  if (!cols.has(name)) db.exec(`ALTER TABLE wnioski ADD COLUMN ${name} ${type}`);
+}
+
 export const J = (s, d = null) => {
   try { return s ? JSON.parse(s) : d; } catch { return d; }
 };

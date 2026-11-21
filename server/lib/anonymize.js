@@ -67,7 +67,11 @@ const DETECTORS = [
   {
     type: 'NIP', label: 'NIP', basis: BASIS_TRADE,
     re: /(?<![\d-])\d{3}-?\d{3}-?\d{2}-?\d{2}(?![\d-])|(?<![\d-])\d{3}-\d{2}-\d{2}-\d{3}(?![\d-])/g,
-    check: (m, ctx) => (nip(m) ? (/nip/i.test(ctx) ? 0.95 : 0.8) : /nip/i.test(ctx) ? 0.6 : 0),
+    check: (m, ctx) => {
+      const base = nip(m) ? (/nip/i.test(ctx) ? 0.95 : 0.8) : /nip/i.test(ctx) ? 0.6 : 0;
+      // NIP firmy (spółki, przedsiębiorcy) jest jawny – anonimizujemy NIP osoby fizycznej nieprowadzącej działalności
+      return /sp\.\s*z\s*o\.?\s*o|s\.a\.|spółk|firm|przedsiębior|wykonawc/i.test(ctx) ? Math.min(base, 0.5) : base;
+    },
   },
   {
     type: 'REGON', label: 'REGON', basis: BASIS_TRADE,
@@ -116,6 +120,22 @@ const DETECTORS = [
   },
 ];
 
+// Kategorie z katalogu UMB „Dane podlegające anonimizacji” (materiały wyzwania): dane szczególne,
+// sytuacja rodzinna/majątkowa, karalność itp. Oznaczamy fragment od słowa-klucza do końca członu zdania.
+const SENSITIVE = [
+  { label: 'Stan zdrowia / niepełnosprawność', re: /\b(?:chor(?:uje|oba|oby|obę|y|ego)|niepełnospraw\w*|leczy się|leczeni\w*|diagnoz\w*|uzależnion\w*|nałog\w*|orzeczeni\w* o (?:niepełnosprawności|stopniu))/gi },
+  { label: 'Sytuacja rodzinna / stan cywilny', re: /\b(?:stan cywilny|rozwiedzion\w*|rozw[oó]d\w*|wdow\w*|samotnie wychowuj\w*|ma (?:\d+|dwoje|troje|czworo|pięcioro) dzieci|imiona rodziców|imię (?:ojca|matki))/gi },
+  { label: 'Sytuacja majątkowa / zadłużenie', re: /\b(?:dochod(?:y|ów|zie)|dochód|zadłużeni\w*|zaległości (?:czynszowe|podatkowe|w opłatach)|komornik\w*|egzekucj\w* komorniczej)/gi },
+  { label: 'Korzystanie z pomocy społecznej', re: /\b(?:pomoc\w* społeczn\w*|zasiłk\w* (?:celow|okresow|stał)\w*|korzyst\w* z (?:pomocy|świadczeń) MOPS|świadczeni\w* z MOPS)/gi },
+  { label: 'Poglądy / religia / przynależność', re: /\b(?:wyznani\w*|poglądy polityczne|światopogląd\w*|członk\w* partii|przynależn\w* (?:partyjn|związkow)\w*|członk\w* związku zawodowego)/gi },
+  { label: 'Pochodzenie etniczne / orientacja', re: /\b(?:pochodzeni\w* (?:etniczne|rasowe)|narodowoś\w*|orientacj\w* seksualn\w*)/gi },
+  { label: 'Karalność / wyroki', re: /\b(?:był\w* karan\w*|niekaran\w*|wyrok\w* skazując\w*|skazan\w* (?:za|wyrokiem|prawomocnie)|wpis\w* w Krajowym Rejestrze Karnym)/gi },
+  { label: 'Miejsce urodzenia', re: /\b(?:ur\.|urodzon\w*) w [A-ZĄĆĘŁŃÓŚŹŻ][\p{L}-]+/gu },
+  { label: 'Nr działki ewidencyjnej', re: /\bdziałk\w*(?: ewidencyjn\w*)? (?:nr|numer)\.?\s*\d+(?:\/\d+)?(?:,? obręb\w* \d+)?/gi, conf: 0.6, note: 'Anonimizuj, jeżeli numer działki pozwala łatwo ustalić prywatnego właściciela.' },
+  { label: 'Tajemnica przedsiębiorstwa', re: /\b(?:zastrzeżon\w* jako tajemnic\w* przedsiębiorstwa|tajemnic\w* przedsiębiorstwa)/gi },
+];
+const CLAUSE_END = /[.;,\n()]| (?:i|oraz|a także|natomiast) /;
+
 const CAP = '[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:-[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?';
 const PERSON_RE = new RegExp(`(?<![\\p{L}])(${CAP})\\s+(${CAP})(?![\\p{L}])`, 'gu');
 const HONORIFIC_RE = new RegExp(`\\b(?:Pan|Pani|Panu|Panią|Pana|Państwo|Wnioskodawca|Wnioskodawczyni|Pełnomocnik)\\s+(${CAP}(?:\\s+${CAP})?)`, 'gu');
@@ -138,6 +158,22 @@ export function detect(text, { minConfidence = 0.5 } = {}) {
     while ((m = d.re.exec(text))) {
       const ctx = text.slice(Math.max(0, m.index - 40), m.index).toLowerCase();
       add(m.index, m.index + m[0].length, d.type, d.label, d.basis, d.check(m[0], ctx));
+    }
+  }
+
+  // Kategorie szczególne z katalogu UMB
+  for (const s of SENSITIVE) {
+    s.re.lastIndex = 0;
+    let k;
+    while ((k = s.re.exec(text))) {
+      let end = k.index + k[0].length;
+      if (!s.conf) {
+        // do końca członu zdania, maks. 80 znaków
+        const rest = text.slice(end, end + 80);
+        const cut = rest.search(CLAUSE_END);
+        end += cut === -1 ? rest.length : cut;
+      }
+      add(k.index, end, 'SZCZEGOLNE', s.label, 'art. 5 ust. 2 u.d.i.p. / art. 9–10 RODO – katalog danych UMB', s.conf || 0.7, s.note || 'Kategoria z katalogu UMB „Dane podlegające anonimizacji” – zweryfikuj, czy dotyczy osoby fizycznej.');
     }
   }
 

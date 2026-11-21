@@ -63,7 +63,7 @@ export function buildDraft(caseData, { type = 'udostepnienie', extension, bipLin
   const blocks = [];
   const T = (kind, text) => blocks.push({ id: `b${blocks.length + 1}`, kind, text, sources: [] });
   const year = (wniosek.received_at || today()).slice(0, 4);
-  const sign = `BKS.1431.${String(wniosek.number).split('/')[0].replace(/\D/g, '') || wniosek.id}.${year}`;
+  const sign = /^BKS\./.test(wniosek.number) ? wniosek.number : `BKS.IV.1431.${String(wniosek.number).replace(/\D/g, '') || wniosek.id}.${year}`;
 
   T('header', `Bydgoszcz, dnia ${plDate(today())}`);
   T('header', sign);
@@ -96,6 +96,10 @@ export function buildDraft(caseData, { type = 'udostepnienie', extension, bipLin
     T('intro', `${intro}, działając na podstawie art. 13 ust. 2 ${law}, uprzejmie zawiadamiam, że wnioskowana informacja nie może zostać udostępniona w terminie 14 dni od dnia złożenia wniosku.`);
     T('template', `Powodem opóźnienia jest ${reason || 'konieczność przeprowadzenia kwerendy w dokumentacji archiwalnej oraz zebrania informacji z kilku komórek organizacyjnych Urzędu'}.`);
     T('template', `Informacja zostanie udostępniona w terminie do dnia ${plDate(date)}.`);
+  } else if (type === 'doprecyzowanie') {
+    T('intro', `${intro}, uprzejmie informuję, że treść wniosku nie pozwala jednoznacznie ustalić zakresu żądanej informacji${reason ? ` – ${reason}` : ''}.`);
+    T('template', 'W związku z powyższym proszę o doprecyzowanie wniosku poprzez wskazanie, jakich konkretnie informacji publicznych dotyczy żądanie (np. okres, rodzaj dokumentów, zakres danych).');
+    T('template', 'Termin na udostępnienie informacji publicznej, o którym mowa w art. 13 ust. 1 ustawy o dostępie do informacji publicznej, biegnie od dnia otrzymania doprecyzowanego wniosku. Brak doprecyzowania uniemożliwi rozpatrzenie wniosku w zakresie, którego nie da się ustalić.');
   } else if (type === 'przetworzona') {
     T('intro', `${intro}, uprzejmie informuję, że żądana informacja ma charakter informacji przetworzonej – jej przygotowanie wymaga ${reason || 'analizy i zestawienia danych z wielu dokumentów, a tym samym zaangażowania znacznych zasobów osobowych i czasowych Urzędu'}.`);
     T('template', `W związku z powyższym, na podstawie art. 3 ust. 1 pkt 1 ${law}, wzywam do wykazania, w terminie 14 dni od dnia doręczenia niniejszego pisma, że uzyskanie wnioskowanej informacji jest szczególnie istotne dla interesu publicznego.`);
@@ -161,14 +165,21 @@ export function draftToText(draft) {
 export function departmentRequestText(wniosek, questions, code, deadline) {
   const dept = departments.find((d) => d.code === code);
   const qs = questions.filter((q) => (q.departments || []).includes(code));
+  // Zgodnie z Zarządzeniem nr 536/2024 Prezydenta Miasta Bydgoszczy (§ 10–11).
   return [
     `Do: ${dept?.name || code}`,
-    `Dotyczy: wniosek o udostępnienie informacji publicznej nr ${wniosek.number} z dnia ${plDate(wniosek.received_at)}`,
+    'Od: Administrator Informacji Publicznej (AIP), Biuro Komunikacji Społecznej',
+    `Dotyczy: wniosek o udostępnienie informacji publicznej, znak ${wniosek.number}, data wpływu ${plDate(wniosek.received_at)}`,
     '',
-    'Uprzejmie proszę o przygotowanie odpowiedzi na następujące pytania wnioskodawcy (proszę oznaczać odpowiedzi numerami „Ad …”):',
+    'Na podstawie § 10 Zarządzenia nr 536/2024 Prezydenta Miasta Bydgoszczy przekazuję zakres wniosku do rozpatrzenia. Uprzejmie proszę o przygotowanie projektu odpowiedzi w części odpowiadającej zakresowi działania Wydziału (proszę oznaczać odpowiedzi „Ad 1”, „Ad 2”…):',
     ...qs.map((q) => `${q.no}. ${q.text}`),
     '',
-    `Termin przekazania odpowiedzi: ${plDate(addDays(deadline, -3))} (termin ustawowy: ${plDate(deadline)}).`,
-    'Proszę o wskazanie fragmentów zawierających dane osobowe lub tajemnicę przedsiębiorcy.',
+    `Projekt odpowiedzi proszę przesłać na adres bip@um.bydgoszcz.pl w terminie do ${plDate(addDays(deadline, -3))} (termin ustawowy: ${plDate(deadline)}).`,
+    'Przypominam (§ 11 Zarządzenia):',
+    '– informację przekazuje się po dokonaniu koniecznej anonimizacji (ust. 8);',
+    '– jeżeli Wydział nie posiada informacji, proszę niezwłocznie o tym poinformować i wskazać jednostkę właściwą (ust. 3);',
+    '– jeżeli informacja ma charakter przetworzony, proszę o projekt odpowiedzi z uzasadnieniem (ust. 7);',
+    '– jeżeli informacja jest chroniona prawem, proszę o projekt decyzji o odmowie udostępnienia (ust. 9);',
+    '– jeżeli projekt nie może być przesłany w terminie, proszę pisemnie wskazać powód i nowy termin (ust. 5).',
   ].join('\n');
 }

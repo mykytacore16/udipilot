@@ -109,6 +109,7 @@ export function maxExtension(received) {
 
 export function urgency(deadline, status, ref = today()) {
   if (status === 'wyslana') return { level: 'done', daysLeft: null, label: 'Zakończony' };
+  if (status === 'doprecyzowanie') return { level: 'paused', daysLeft: null, label: 'Czeka na doprecyzowanie' };
   const left = diffDays(ref, deadline);
   if (left < 0) return { level: 'overdue', daysLeft: left, label: `Po terminie (${-left} dni)` };
   if (left === 0) return { level: 'today', daysLeft: 0, label: 'Termin dziś' };

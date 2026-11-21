@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, plDate, STATUS, STATUS_ORDER } from '../api.js';
-import { StatusBadge, UrgencyBadge, Spinner } from '../components/ui.jsx';
+import { api, download, plDate, STATUS, STATUS_ORDER } from '../api.js';
+import { StatusBadge, UrgencyBadge, Spinner, Modal, useToast } from '../components/ui.jsx';
 import { go } from '../App.jsx';
 import { holidays } from '../holidays.js';
 
@@ -11,9 +11,22 @@ export default function Wnioski() {
   const [filter, setFilter] = useState('wszystkie');
   const [q, setQ] = useState('');
 
+  const toast = useToast();
+  const [imp, setImp] = useState(null);
+  const [reload, setReload] = useState(0);
   useEffect(() => {
     api.get(`/api/wnioski${year ? `?year=${year}` : ''}`).then((d) => { setData(d); if (!year) setYear(d.year); });
-  }, [year]);
+  }, [year, reload]);
+
+  const importXlsx = async (file) => {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.post('/api/wnioski/import', fd);
+      setImp({ ...r, name: file.name });
+      setReload((x) => x + 1);
+    } catch (e) { toast(e.message, 'err'); }
+  };
 
   const items = useMemo(() => {
     if (!data) return [];
@@ -33,7 +46,7 @@ export default function Wnioski() {
     open: open.length,
     overdue: open.filter((w) => w.urgency.level === 'overdue').length,
     urgent: open.filter((w) => ['today', 'tomorrow'].includes(w.urgency.level)).length,
-    kwerenda: open.filter((w) => w.status === 'kwerenda').length,
+    kwerenda: open.filter((w) => ['kwerenda', 'doprecyzowanie'].includes(w.status)).length,
     done: all.length - open.length,
   };
 
@@ -48,6 +61,11 @@ export default function Wnioski() {
           <select value={year || ''} onChange={(e) => setYear(+e.target.value)} title="Rok">
             {data.years.map((y) => <option key={y} value={y}>Rok {y}</option>)}
           </select>
+          <label className="btn" title="Wczytaj rejestr w formacie arkusza UMB (XLSX)">
+            ⬆ Import z Excela
+            <input type="file" accept=".xlsx" hidden onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importXlsx(f); }} />
+          </label>
+          <button className="btn" onClick={() => download(`/api/wnioski/export.xlsx?year=${data.year}`, null, 'wnioski.xlsx').catch((e) => toast(e.message, 'err'))}>⬇ Eksport do Excela</button>
           <button className="btn primary" onClick={() => go('/nowy')}>＋ Nowy wniosek</button>
         </div>
       </div>
@@ -56,7 +74,7 @@ export default function Wnioski() {
         <div className="card kpi"><div className="l">W toku</div><div className="v">{k.open}</div></div>
         <div className="card kpi red"><div className="l">Po terminie</div><div className="v">{k.overdue}</div></div>
         <div className="card kpi orange"><div className="l">Termin dziś / jutro</div><div className="v">{k.urgent}</div></div>
-        <div className="card kpi violet"><div className="l">Kwerenda (przedłużone)</div><div className="v">{k.kwerenda}</div></div>
+        <div className="card kpi violet"><div className="l">Kwerenda / doprecyzowanie</div><div className="v">{k.kwerenda}</div></div>
         <div className="card kpi"><div className="l">Zakończone w {data.year}</div><div className="v">{k.done}</div></div>
       </div>
 
@@ -79,15 +97,28 @@ export default function Wnioski() {
             <span className="l-red">po terminie</span>
             <span className="l-orange">termin dziś</span>
             <span className="l-yellow">termin jutro</span>
-            <span className="l-violet">kwerenda</span>
+            <span className="l-violet">kwerenda / doprecyzowanie</span>
           </div>
         </div>
         {view === 'tabela' ? <Table items={items} /> : <Calendar items={items} year={data.year} />}
       </div>
+
+      {imp && (
+        <Modal title={`Import rejestru: ${imp.name}`} onClose={() => setImp(null)} footer={<button className="btn primary" onClick={() => setImp(null)}>OK</button>}>
+          <div className="stack">
+            <div className="alert ok">Dodano {imp.created} wniosków, zaktualizowano {imp.updated}. Terminy przeliczono zgodnie z art. 13 u.d.i.p. i art. 57 § 4 KPA.</div>
+            {imp.warnings.length > 0 && <h3>Wykryte niezgodności ({imp.warnings.length})</h3>}
+            {imp.warnings.map((w) => (
+              <div key={w.number} className="alert warn small"><b className="mono">{w.number}</b>{w.notes.map((n, i) => <div key={i}>• {n}</div>)}</div>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
+// Kolumny zgodne z arkuszem UMB „WNIOSKI O UDOSTĘPNIANIE INFORMACJI PUBLICZNEJ” + status i wydziały.
 function Table({ items }) {
   if (!items.length) return <div className="empty">Brak wniosków dla wybranych filtrów.</div>;
   return (
@@ -95,26 +126,29 @@ function Table({ items }) {
       <table className="t">
         <thead>
           <tr>
-            <th>Lp.</th><th>Nr wniosku</th><th>Data wpływu</th><th>Termin odpowiedzi</th><th>Pozostało</th>
-            <th style={{ minWidth: 260 }}>Temat wniosku</th><th>Wydziały</th><th>Status</th><th>Inicjały</th><th>Data odpowiedzi</th>
+            <th>Lp.</th><th>Numer sprawy</th><th>Wnioskodawca</th><th style={{ minWidth: 240 }}>Przedmiot zapytania</th><th>Data wpływu</th><th>Termin odpowiedzi</th>
+            <th>Data odpowiedzi</th><th>Osoba odpowiedzialna</th><th>Pozostało dni</th><th>Status</th><th>Wydziały</th>
           </tr>
         </thead>
         <tbody>
           {items.map((w) => (
             <tr key={w.id} className={`clickable u-${w.urgency.level}`} onClick={() => go(`/wnioski/${w.id}`)}>
               <td className="muted">{w.lp}</td>
-              <td><b>{w.number}</b></td>
+              <td><b className="mono" style={{ fontSize: 12 }}>{w.number}</b>{w.import_notes?.length > 0 && <div title={w.import_notes.join('\n')} className="small" style={{ color: 'var(--orange)', cursor: 'help' }}>⚠ uwagi ({w.import_notes.length})</div>}</td>
+              <td className="small">{w.requester || '—'}</td>
+              <td>{w.summary}</td>
               <td>{plDate(w.received_at)}</td>
               <td>
-                <b>{plDate(w.deadline)}</b>
+                {w.clarification_received_at && w.sheet_deadline && <div className="small faint" style={{ textDecoration: 'line-through' }}>{plDate(w.sheet_deadline)}</div>}
+                <b>{w.status === 'doprecyzowanie' ? 'wstrzymany' : plDate(w.deadline)}</b>
                 {w.status === 'kwerenda' && <div className="small" style={{ color: 'var(--violet)' }}>przedłużony</div>}
+                {(w.clarification_received_at || w.status === 'doprecyzowanie') && <div className="small" style={{ color: 'var(--violet)' }}>doprecyzowanie wniosku</div>}
               </td>
-              <td><UrgencyBadge urgency={w.urgency} /></td>
-              <td>{w.summary}<div className="faint small">{w.requester}</div></td>
-              <td>{w.departments.map((d) => <span key={d} className="chip" style={{ marginRight: 4 }}>{d}</span>)}</td>
-              <td><StatusBadge status={w.status} /></td>
-              <td className="mono">{w.initials || '—'}</td>
               <td>{plDate(w.answered_at)}</td>
+              <td className="small">{w.initials || '—'}</td>
+              <td><UrgencyBadge urgency={w.urgency} /></td>
+              <td><StatusBadge status={w.status} /></td>
+              <td>{w.departments.map((d) => <span key={d} className="chip" style={{ marginRight: 4 }}>{d}</span>)}</td>
             </tr>
           ))}
         </tbody>

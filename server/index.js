@@ -15,6 +15,8 @@ import { buildDraft, verifyDraft, draftToText, departmentRequestText } from './l
 import { toDocx, toText } from './lib/exporter.js';
 import { llmStatus, polishParagraph, findPersonalData, splitWithLLM } from './lib/llm.js';
 import { seedDemo } from './seed.js';
+import { parseRegistry, registryXlsx, numberSeq, makeNumber } from './lib/registry.js';
+import { importRecords } from './importer.js';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -26,7 +28,7 @@ app.use((req, res, next) => {
 });
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-const STATUSES = ['nowy', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
+const STATUSES = ['nowy', 'doprecyzowanie', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
 
 // ---------- Indeks archiwum (odbudowywany przy zmianach) ----------
 let archive = null;
@@ -71,6 +73,7 @@ function rowToWniosek(w) {
   return {
     ...w,
     hints: J(w.hints, []),
+    import_notes: J(w.import_notes, []),
     deadline_explanation: J(w.deadline_explanation, []),
     urgency: urgency(w.deadline, w.status),
   };
@@ -92,7 +95,7 @@ function setStatus(id, status, note) {
   db.prepare('UPDATE wnioski SET status = ? WHERE id = ?').run(status, id);
   log(id, `Status: ${statusLabel(status)}`, note);
 }
-const statusLabel = (s) => ({ nowy: 'brak działań', w_wydzialach: 'zapytania wysłane do wydziałów', kwerenda: 'kwerenda (przedłużony termin)', przygotowana: 'odpowiedź przygotowana', wyslana: 'odpowiedź wysłana' }[s] || s);
+const statusLabel = (s) => ({ nowy: 'brak działań', doprecyzowanie: 'wezwanie do doprecyzowania wniosku', w_wydzialach: 'zapytania wysłane do wydziałów', kwerenda: 'kwerenda (przedłużony termin)', przygotowana: 'odpowiedź przygotowana', wyslana: 'odpowiedź wysłana' }[s] || s);
 
 // Anonimizacja projektu: ponowne wykrycie z zachowaniem decyzji urzędnika.
 function detectDraftEntities(draft, previous = []) {
@@ -164,7 +167,9 @@ app.post('/api/wnioski/analyze', upload.single('file'), wrap(async (req, res) =>
   let questions = splitQuestions(text);
   let summary = summarize(text, questions);
   let aiUsed = false;
-  if (llmStatus().enabled && req.body?.useAi !== 'false') {
+  // Lista numerowana → reguły zachowują dokładne brzmienie pytań; model tylko dla prozy.
+  const numbered = (text.match(/^\s*\d{1,2}[.)]\s+\S/gm) || []).length >= 2;
+  if (llmStatus().enabled && req.body?.useAi !== 'false' && !numbered) {
     try {
       const out = await splitWithLLM(text);
       if (out.questions?.length) { questions = out.questions.map((q, i) => ({ no: i + 1, text: q })); aiUsed = true; }
@@ -189,8 +194,8 @@ app.post('/api/wnioski', wrap(async (req, res) => {
   const received = b.received_at || today();
   const year = +received.slice(0, 4);
   const dl = computeDeadline(received);
-  const seq = Math.max(0, ...db.prepare('SELECT number FROM wnioski WHERE year = ?').all(year).map((r) => parseInt(r.number, 10) || 0)) + 1;
-  const number = b.number || `${seq}/${year}`;
+  const seq = Math.max(0, ...db.prepare('SELECT number FROM wnioski WHERE year = ?').all(year).map((r) => numberSeq(r.number))) + 1;
+  const number = b.number || makeNumber(seq, year);
   const info = db.prepare(`INSERT INTO wnioski (number, year, received_at, request_date, deadline, deadline_explanation, status, initials, summary, requester, requester_contact, delivery, text, filename, hints)
     VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     number, year, received, b.meta?.requestDate || null, dl.deadline, JSON.stringify(dl.explanation),
@@ -202,6 +207,42 @@ app.post('/api/wnioski', wrap(async (req, res) => {
   (b.questions || []).forEach((q, i) => ins.run(id, i + 1, q.text, JSON.stringify(q.departments || []), JSON.stringify(q.suggestions || [])));
   log(id, 'Wniosek zarejestrowany', `${number}, termin ${dl.deadline}${b.filename ? `, plik: ${b.filename}` : ''}`);
   res.status(201).json(loadCase(id));
+}));
+
+// Import / eksport rejestru w formacie arkusza UMB
+app.post('/api/wnioski/import', upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) throw httpError(400, 'Wybierz plik XLSX z rejestrem wniosków');
+  let records;
+  try { records = parseRegistry(req.file.buffer); } catch (e) { throw httpError(422, `Nie udało się odczytać arkusza: ${e.message}`); }
+  res.json(importRecords(records, archiveIndex()));
+}));
+
+app.get('/api/wnioski/export.xlsx', wrap(async (req, res) => {
+  const year = +req.query.year || new Date().getFullYear();
+  const items = db.prepare('SELECT * FROM wnioski WHERE year = ? ORDER BY received_at ASC, id ASC').all(year);
+  res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="wnioski_udip_${year}.xlsx"` });
+  res.send(registryXlsx(items));
+}));
+
+// Wezwanie do doprecyzowania wniosku – termin wstrzymany do czasu doprecyzowania.
+app.post('/api/wnioski/:id/doprecyzowanie', wrap(async (req, res) => {
+  const id = +req.params.id;
+  const date = req.body.date || today();
+  db.prepare('UPDATE wnioski SET clarification_requested_at = ?, sheet_deadline = deadline WHERE id = ?').run(date, id);
+  setStatus(id, 'doprecyzowanie', `wezwanie z dnia ${date}; termin wstrzymany do czasu doprecyzowania`);
+  res.json(loadCase(id));
+}));
+
+app.post('/api/wnioski/:id/doprecyzowanie/wplynelo', wrap(async (req, res) => {
+  const id = +req.params.id;
+  const date = req.body.date || today();
+  const dl = computeDeadline(date);
+  const w = db.prepare('SELECT * FROM wnioski WHERE id = ?').get(id);
+  const expl = [...J(w.deadline_explanation, []), `Doprecyzowanie wniosku wpłynęło ${date} – termin liczony od nowa: ${dl.explanation.join(' ')}`];
+  db.prepare('UPDATE wnioski SET clarification_received_at = ?, deadline = ?, deadline_explanation = ? WHERE id = ?').run(date, dl.deadline, JSON.stringify(expl), id);
+  const hasResponses = db.prepare('SELECT COUNT(*) c FROM odpowiedzi WHERE wniosek_id = ?').get(id).c;
+  setStatus(id, hasResponses ? 'w_wydzialach' : 'nowy', `doprecyzowanie wpłynęło ${date}, nowy termin ${dl.deadline}`);
+  res.json(loadCase(id));
 }));
 
 app.get('/api/wnioski/:id', wrap(async (req, res) => {
