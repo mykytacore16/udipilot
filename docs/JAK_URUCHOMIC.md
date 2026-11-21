@@ -3,7 +3,15 @@
 Czas: ok. 5 minut. Wymagania: Windows / macOS / Linux, **Node.js 22.5 lub nowszy** (https://nodejs.org), Git.
 Internet potrzebny tylko do pobrania kodu i bibliotek – sama aplikacja działa offline.
 
-## 1. Pobranie i uruchomienie
+## 1. Najprościej – instalator jednym kliknięciem
+
+1. Na https://github.com/mykytacore16/udipilot kliknij **Code → Download ZIP** i rozpakuj.
+2. **Windows:** kliknij dwukrotnie **`INSTALUJ.bat`**. **macOS/Linux:** w terminalu `./instaluj.sh`.
+3. Instalator sam: doinstaluje Node.js (jeśli brak), zbuduje aplikację, wczyta dane demo, zapyta o lokalny model Bielik (opcjonalnie, ok. 5 GB), utworzy skrót **UDIPilot** na pulpicie i otworzy **http://localhost:3000**.
+
+Kolejne uruchomienia: skrót na pulpicie lub **`URUCHOM.bat`** / `./uruchom.sh`.
+
+## 1a. Ręcznie (dla programistów)
 
 ```bash
 git clone https://github.com/mykytacore16/udipilot.git
@@ -32,18 +40,13 @@ Pliki testowe (dane fikcyjne) są w folderze `samples/pakiet_testowy/` – opis 
 Gotowa sprawa demo w rejestrze: **BKS.IV.1431.603.2026** (brak odpowiedzi jednego wydziału – system to wykrywa).
 Przywrócenie danych demo: **Bezpieczeństwo i AI → Przywróć dane demo**.
 
-## 3. (Opcjonalnie) lokalny model AI – Bielik
+## 3. (Opcjonalnie) model AI – przycisk „Podłącz AI”
 
-Aplikacja działa bez modelu (reguły + wyszukiwanie lokalne). Aby włączyć funkcje AI:
+Aplikacja działa bez modelu (reguły + wyszukiwanie lokalne). W lewym dolnym rogu jest przycisk **Podłącz AI**:
 
-```bash
-# 1. zainstaluj Ollama: https://ollama.com
-ollama pull SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
-# 2. utwórz plik .env w folderze udipilot:
-LLM_BASE_URL=http://127.0.0.1:11434/v1
-LLM_MODEL=SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0
-# 3. uruchom ponownie: npm start
-```
+- **Bielik lokalnie (zalecane)** – wymaga Ollama (https://ollama.com, instalator może ją doinstalować). Okno wykrywa Ollama i pobiera model przyciskiem **Pobierz Bielik** z paskiem postępu. Dane nie opuszczają komputera.
+- **Claude / GPT / Gemini** – wklej klucz API. Pojawia się czerwone ostrzeżenie, że dane wniosków (także osobowe) zostaną wysłane do zewnętrznego dostawcy; zapis wymaga zaznaczenia potwierdzenia. Tylko do testów na danych fikcyjnych.
+- **Sprawdź połączenie** wysyła krótkie zapytanie testowe; **Odłącz** wraca do trybu offline.
 
 ## 4. Docker (alternatywa)
 

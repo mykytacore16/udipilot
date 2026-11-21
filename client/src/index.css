@@ -115,7 +115,7 @@ button, input, select, textarea { font: inherit; color: inherit; letter-spacing:
 .btn.dark { background: #1d1d1f; color: #fff; }
 .btn.dark:hover { background: #3a3a3c; }
 
-input[type=text], input[type=date], input[type=email], input:not([type]), select, textarea {
+input[type=text], input[type=date], input[type=email], input[type=password], input:not([type]), select, textarea {
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 11px; background: var(--surface); outline: none; min-width: 0;
   transition: border-color .15s, box-shadow .15s;
 }
@@ -300,3 +300,24 @@ table.t td, table.t th { padding: 11px 10px; }
 table.t td .mono { font-family: inherit; font-size: 12.5px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .app { grid-template-columns: 236px 1fr; }
 .main { padding: 32px 32px 72px; }
+
+/* Podłącz AI */
+.sidebar-foot.cloud { border-color: #ffb3ae; background: var(--red-soft); }
+.sidebar-foot.cloud .foot-text { color: #86160f; }
+.foot-btn { margin-top: 8px; justify-content: center; width: 100%; }
+.ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+.ai-card { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface); transition: border-color .15s, background .15s; }
+.ai-card:hover { background: var(--fill-2); }
+.ai-card.on { border-color: var(--primary); background: var(--primary-soft); }
+.ai-card .lucide { width: 20px; height: 20px; color: var(--primary); }
+.ai-name { font-weight: 600; font-size: 13px; color: var(--text); }
+.ai-hint { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.ai-tag { align-self: flex-start; margin-top: 4px; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--fill-2); color: var(--muted); }
+.ai-tag.loc { background: var(--green-soft); color: #11502a; }
+.ai-tag.cloud { background: var(--red-soft); color: #86160f; }
+.ai-warn { display: flex; flex-direction: column; gap: 6px; border: 1px solid #ffb3ae; }
+.ai-accept { display: flex; gap: 8px; align-items: flex-start; font-weight: 600; margin-top: 4px; cursor: pointer; }
+.ai-accept input { margin-top: 3px; }
+.ai-form { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.ai-progress .bar { height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; margin-top: 6px; }
+.ai-progress .bar i { display: block; height: 100%; background: var(--primary); transition: width .4s; }

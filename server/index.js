@@ -13,7 +13,8 @@ import { computeDeadline, maxExtension, urgency, today, diffDays } from './lib/d
 import { analyze as findPII, mergeOverlaps, assignLabels } from './lib/anonymize.js';
 import { buildDraft, verifyDraft, draftToText, departmentRequestText } from './lib/draft.js';
 import { toDocx, toText } from './lib/exporter.js';
-import { llmStatus, polishParagraph, findPersonalData, splitWithLLM } from './lib/llm.js';
+import { llmStatus, polishParagraph, findPersonalData, splitWithLLM, testConnection } from './lib/llm.js';
+import { PROVIDERS, readSettings, writeSettings, clearSettings, activeConfig, maskKey, isLocalUrl } from './lib/settings.js';
 import { seedDemo } from './seed.js';
 import { parseRegistry, registryXlsx, numberSeq, makeNumber } from './lib/registry.js';
 import { importRecords } from './importer.js';
@@ -514,6 +515,95 @@ app.delete('/api/knowledge/:id', wrap(async (req, res) => {
   db.prepare('DELETE FROM dokumenty WHERE id = ?').run(+req.params.id);
   invalidate();
   res.status(204).end();
+}));
+
+// ---------- Połączenie z modelem AI ----------
+const OLLAMA = () => (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/$/, '');
+
+function aiView() {
+  const s = readSettings();
+  const c = activeConfig();
+  return {
+    status: llmStatus(),
+    settings: c ? { provider: c.provider, model: c.model, baseUrl: c.baseUrl, hasKey: !!c.apiKey && c.apiKey !== 'ollama', key: maskKey(c.apiKey === 'ollama' ? '' : c.apiKey), fromEnv: !!c.fromEnv, cloudAccepted: !!s?.cloudAccepted } : null,
+    providers: PROVIDERS,
+  };
+}
+
+function configFromBody(b) {
+  const p = PROVIDERS[b?.provider];
+  if (!p) throw httpError(400, 'Nieznany dostawca AI');
+  const prev = activeConfig();
+  // Pusty klucz = zostaw zapisany (pole w formularzu pokazuje tylko maskę).
+  const apiKey = (b.apiKey || '').trim() || (prev?.provider === b.provider ? prev.apiKey : '');
+  const baseUrl = ((b.baseUrl || '').trim() || p.baseUrl).replace(/\/$/, '');
+  const model = (b.model || '').trim() || p.model;
+  if (p.needsKey && !apiKey) throw httpError(400, 'Podaj klucz API');
+  if (!model) throw httpError(400, 'Podaj nazwę modelu');
+  if (b.provider !== 'anthropic' && !/^https?:\/\//.test(baseUrl)) throw httpError(400, 'Podaj adres serwera (http://…)');
+  const local = b.provider === 'anthropic' ? false : (p.local ?? isLocalUrl(baseUrl));
+  return { provider: b.provider, baseUrl, model, apiKey, local };
+}
+
+app.get('/api/ai', (req, res) => res.json(aiView()));
+
+app.post('/api/ai/test', wrap(async (req, res) => {
+  const c = configFromBody(req.body);
+  try { res.json(await testConnection(c)); } catch (e) { res.json({ ok: false, error: e.message }); }
+}));
+
+app.put('/api/ai', wrap(async (req, res) => {
+  const c = configFromBody(req.body);
+  if (!c.local && req.body.cloudAccepted !== true) throw httpError(400, 'Model w chmurze wymaga potwierdzenia, że dane opuszczą Urząd.');
+  writeSettings({ provider: c.provider, model: c.model, baseUrl: c.baseUrl, apiKey: c.apiKey, cloudAccepted: !c.local, savedAt: new Date().toISOString() });
+  console.log(`Połączono model AI: ${PROVIDERS[c.provider].label} / ${c.model}${c.local ? '' : ' (CHMURA)'}`);
+  res.json(aiView());
+}));
+
+app.delete('/api/ai', (req, res) => {
+  clearSettings();
+  console.log('Odłączono model AI – tryb offline na regułach');
+  res.json(aiView());
+});
+
+app.get('/api/ai/ollama', wrap(async (req, res) => {
+  try {
+    const r = await fetch(`${OLLAMA()}/api/tags`, { signal: AbortSignal.timeout(2500) });
+    const data = await r.json();
+    res.json({ running: true, models: (data.models || []).map((m) => ({ name: m.name, size: m.size })), pull: pullJob });
+  } catch {
+    res.json({ running: false, models: [], pull: pullJob });
+  }
+}));
+
+let pullJob = null;
+app.post('/api/ai/ollama/pull', wrap(async (req, res) => {
+  const model = req.body?.model || PROVIDERS.ollama.model;
+  if (pullJob?.state === 'running') return res.json(pullJob);
+  pullJob = { model, state: 'running', status: 'start', completed: 0, total: 0 };
+  res.json(pullJob);
+  try {
+    const r = await fetch(`${OLLAMA()}/api/pull`, { method: 'POST', body: JSON.stringify({ model, stream: true }) });
+    if (!r.ok) throw new Error(`Ollama HTTP ${r.status}`);
+    const dec = new TextDecoder();
+    let buf = '';
+    for await (const chunk of r.body) {
+      buf += dec.decode(chunk, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.error) throw new Error(ev.error);
+        pullJob.status = ev.status || pullJob.status;
+        if (ev.total) { pullJob.total = ev.total; pullJob.completed = ev.completed || 0; }
+      }
+    }
+    pullJob.state = 'done';
+  } catch (e) {
+    pullJob.state = 'error';
+    pullJob.error = e.cause?.code === 'ECONNREFUSED' ? 'Ollama nie jest uruchomiona' : e.message;
+  }
 }));
 
 // ---------- Dane demonstracyjne ----------

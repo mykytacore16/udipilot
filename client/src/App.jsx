@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Cpu, EyeOff, FilePlus2, Landmark, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, Cpu, EyeOff, FilePlus2, Landmark, Plug, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 import Wnioski from './pages/Wnioski.jsx';
@@ -7,6 +7,7 @@ import Sprawa from './pages/Sprawa.jsx';
 import Anonimizator from './pages/Anonimizator.jsx';
 import BazaWiedzy from './pages/BazaWiedzy.jsx';
 import OSystemie from './pages/OSystemie.jsx';
+import AiConnect from './components/AiConnect.jsx';
 
 function useHash() {
   const [hash, setHash] = useState(window.location.hash || '#/');
@@ -24,8 +25,12 @@ export default function App() {
   const hash = useHash();
   const [status, setStatus] = useState(null);
   const [departments, setDepartments] = useState([]);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [rev, setRev] = useState(0);
   useEffect(() => {
     api.get('/api/status').then(setStatus).catch(() => {});
+  }, [hash, rev]);
+  useEffect(() => {
     api.get('/api/departments').then(setDepartments).catch(() => {});
   }, [hash]);
 
@@ -59,16 +64,20 @@ export default function App() {
           <a href="#/wiedza" className={active('/wiedza')}><BookOpen /> Baza wiedzy</a>
           <a href="#/system" className={active('/system')}><ShieldCheck /> Bezpieczeństwo i AI</a>
         </nav>
-        <div className="sidebar-foot">
-          <div className="foot-title"><Cpu /> {llm?.enabled ? (llm.local ? 'AI lokalne' : 'AI zewnętrzne (demo)') : 'Tryb offline'}<span className="dot" style={{ background: llm?.enabled && !llm.local ? '#ff9f0a' : '#30d158' }} /></div>
+        <div className={`sidebar-foot ${llm?.enabled && !llm.local ? 'cloud' : ''}`}>
+          <div className="foot-title">{llm?.enabled && !llm.local ? <AlertTriangle /> : <Cpu />} {llm?.enabled ? (llm.local ? 'AI lokalne' : 'AI w chmurze') : 'AI nie jest podłączone'}<span className="dot" style={{ background: !llm?.enabled ? '#c7c7cc' : llm.local ? '#30d158' : '#ff3b30' }} /></div>
           <div className="foot-text">
-            {llm?.enabled ? llm.model.replace(/^.*\//, '').replace(/-instruct.*$/, '') : 'Reguły i wyszukiwanie lokalne'}
+            {llm?.enabled ? llm.model.replace(/^.*\//, '').replace(/-instruct.*$/, '') : 'Działa tryb offline: reguły i wyszukiwanie lokalne'}
           </div>
-          <div className="foot-text">Dane nie opuszczają Urzędu</div>
+          <div className="foot-text">{!llm?.enabled || llm.local ? 'Dane nie opuszczają Urzędu' : 'Uwaga: dane są wysyłane poza Urząd'}</div>
+          {llm?.enabled
+            ? <button className="btn sm foot-btn" onClick={() => setAiOpen(true)}><Plug /> Zmień model AI</button>
+            : <button className="btn primary sm foot-btn" onClick={() => setAiOpen(true)}><Plug /> Podłącz AI</button>}
           <div className="foot-date">{status?.today?.split('-').reverse().join('.')}</div>
         </div>
       </aside>
       <main className="main">{page}</main>
+      {aiOpen && <AiConnect onClose={() => setAiOpen(false)} onChanged={() => setRev((r) => r + 1)} />}
     </div>
   );
 }

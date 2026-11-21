@@ -14,9 +14,9 @@ export default function OSystemie({ status }) {
       <div className="grid-2">
         <div className="card card-pad stack">
           <h2>Tryb pracy</h2>
-          <div className={`alert ${llm?.enabled && !llm.local ? 'warn' : 'ok'}`}>
+          <div className={`alert ${llm?.enabled && !llm.local ? 'err' : 'ok'}`}>
             {llm?.enabled
-              ? <>Model językowy: <b>{llm.model}</b> ({llm.local ? 'lokalny' : 'zewnętrzny – tylko na potrzeby demo na danych testowych'})<br /><span className="mono small">{llm.baseUrl}</span></>
+              ? <>Model językowy: <b>{llm.model}</b> ({llm.local ? 'lokalny' : 'w chmurze – dane opuszczają Urząd, używaj tylko na danych testowych'})<br /><span className="mono small">{llm.baseUrl}</span></>
               : <>Pracuje <b>w 100% offline</b>: reguły, wyszukiwanie BM25 i słowniki działają lokalnie. Żadne dane nie opuszczają serwera.</>}
           </div>
           <p className="small muted">Model ustawia się jedną zmienną w pliku <span className="mono">.env</span> (interfejs zgodny z OpenAI: Ollama, vLLM, LM Studio). Zmiana modelu nie wymaga zmian w kodzie.</p>

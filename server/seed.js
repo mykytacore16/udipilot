@@ -138,6 +138,9 @@ return { ...c, today: T };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  // --if-empty: nie nadpisuj istniejących danych (ponowna instalacja)
+  const has = process.argv.includes('--if-empty') && db.prepare('SELECT COUNT(*) n FROM wnioski').get().n > 0;
+  if (has) { console.log('Baza zawiera już dane – pomijam wczytanie danych demo.'); process.exit(0); }
   const c = seedDemo();
   console.log(`Seed OK: ${c.w} wniosków, ${c.d} dokumentów w bazie wiedzy. Dziś: ${c.today}`);
 }

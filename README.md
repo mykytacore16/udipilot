@@ -1,9 +1,13 @@
 # UDIPilot – Inteligentny Asystent Urzędnika
 
 Prototyp na HackNation 2026 (wyzwanie Urzędu Miasta Bydgoszczy): **rejestr i kalendarz wniosków UDIP + generator projektów odpowiedzi + anonimizacja danych**.
-Działa **w 100% offline** (reguły, wyszukiwanie lokalne). Model językowy jest opcjonalny i podłączany jedną zmienną – docelowo lokalny **Bielik / PLLuM**.
+Działa **w 100% offline** (reguły, wyszukiwanie lokalne). Model językowy jest opcjonalny i podłączany przyciskiem **„Podłącz AI”** – domyślnie lokalny **Bielik** (Ollama), opcjonalnie do testów Claude / GPT / Gemini (z ostrzeżeniem, że dane opuszczają Urząd).
 
 ## Szybki start
+
+**Instalacja jednym kliknięciem:** pobierz repozytorium (Code → Download ZIP), rozpakuj i uruchom **`INSTALUJ.bat`** (Windows) lub **`./instaluj.sh`** (macOS/Linux). Instalator sam doinstaluje Node.js (winget/Homebrew), zbuduje aplikację, wczyta dane demo, opcjonalnie zainstaluje Ollama + Bielik, utworzy skrót „UDIPilot” na pulpicie i otworzy http://localhost:3000. Kolejne uruchomienia: **`URUCHOM.bat`** / `./uruchom.sh`.
+
+Ręcznie:
 
 Wymagania: Node.js ≥ 22.5 (wbudowany SQLite). Bez Dockera, bez GPU, bez Internetu w trakcie pracy.
 
@@ -79,7 +83,9 @@ Skalowanie: setki/tysiące archiwalnych dokumentów – indeks BM25 w pamięci (
 | Projekt pisma | szablony + treść wydziałów | LLM tylko redaguje styl, wynik weryfikowany |
 | Anonimizacja | reguły + sumy kontrolne | LLM jako 2. warstwa |
 
-**Przetestowane lokalnie:** Ollama 0.40 + `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` (5,1 GB) na laptopie z RTX 3060 6 GB – podział wniosku na pytania ok. 4 s, redakcja akapitu 1–3 s, druga warstwa anonimizacji ok. 8 s. Konfiguracja: skopiuj `.env.example` do `.env` i ustaw `LLM_BASE_URL=http://127.0.0.1:11434/v1`, `LLM_MODEL=SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0`. Redakcja przez model to zawsze propozycja „przed/po” do akceptacji – model potrafi subtelnie zmienić sformułowanie.
+**Przetestowane lokalnie:** Ollama 0.40 + `SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0` (5,1 GB) na laptopie z RTX 3060 6 GB – podział wniosku na pytania ok. 4 s, redakcja akapitu 1–3 s, druga warstwa anonimizacji ok. 8 s. Konfiguracja: przycisk **Podłącz AI** w lewym dolnym rogu (wykrywa Ollama, pobiera Bielika z paskiem postępu, test połączenia) – ustawienia zapisywane lokalnie w `data/settings.json`; alternatywnie zmienne `LLM_BASE_URL` / `LLM_MODEL` w `.env`. Redakcja przez model to zawsze propozycja „przed/po” do akceptacji – model potrafi subtelnie zmienić sformułowanie.
+
+**Modele w chmurze (tylko do testów):** Claude (oficjalne SDK `@anthropic-ai/sdk`, domyślnie `claude-opus-5-5` z fallbackiem po stronie serwera), GPT (OpenAI), Gemini (Google) lub dowolny serwer zgodny z OpenAI. Wybranie modelu w chmurze wymaga zaznaczenia potwierdzenia ryzyka (dane wniosków, także osobowe, trafiają do zewnętrznego dostawcy – RODO); panel boczny świeci wtedy na czerwono „AI w chmurze”. Klucze API są przechowywane tylko lokalnie i maskowane w interfejsie.
 
 Rekomendowany model docelowy (serwer Urzędu): **Bielik-11B-v2.x-Instruct** (Ollama/vLLM, 1× GPU 24 GB) lub **PLLuM**; bez GPU – Bielik 4.5B/1.5B w kwantyzacji Q4 na CPU.
 
