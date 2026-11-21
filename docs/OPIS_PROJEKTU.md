@@ -27,4 +27,4 @@ Prototyp działa **w całości bez Internetu i bez dużych modeli językowych** 
 Pilot w jednym biurze na serwerze Urzędu (Docker) z importem archiwum odpowiedzi → pełne teksty ustaw z ISAP i OCR skanów → logowanie AD/LDAP i role dla całego Urzędu → ten sam silnik dla wniosków RODO i innych JST.
 
 ## Linki
-Repozytorium: [link] · Film: [link] · Prezentacja: PDF w zgłoszeniu
+Repozytorium: https://github.com/mykytacore16/udipilot · Film: [link] · Prezentacja: PDF w zgłoszeniu
