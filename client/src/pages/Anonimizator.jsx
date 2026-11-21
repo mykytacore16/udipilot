@@ -1,3 +1,4 @@
+import { Download, EyeOff, ScanSearch } from 'lucide-react';
 import { useState } from 'react';
 import { api, download } from '../api.js';
 import { Dropzone, Spinner, useToast } from '../components/ui.jsx';
@@ -33,7 +34,7 @@ export default function Anonimizator() {
         <div className="card card-pad stack" style={{ maxWidth: 860 }}>
           <Dropzone onFile={run} busy={busy} />
           <textarea rows={6} placeholder="…lub wklej tekst" value={paste} onChange={(e) => setPaste(e.target.value)} />
-          <div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn primary" disabled={busy || !paste.trim()} onClick={() => run(null)}>{busy ? <Spinner /> : '■'} Wykryj dane</button></div>
+          <div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn primary" disabled={busy || !paste.trim()} onClick={() => run(null)}>{busy ? <Spinner /> : <ScanSearch />} Wykryj dane</button></div>
           <div className="alert info small">
             Wykrywane: imiona i nazwiska (słownik imion + kontekst), PESEL (z sumą kontrolną), NIP, REGON, nr rachunku (IBAN z weryfikacją), telefon, e-mail, adres, kod pocztowy,
             nr dowodu/paszportu, data urodzenia, nr rejestracyjny, nr księgi wieczystej. Osoby pełniące funkcje publiczne są oznaczane z ostrzeżeniem (art. 5 ust. 2 zd. 2).
@@ -47,9 +48,9 @@ export default function Anonimizator() {
               {byType.map(([l, n]) => <span key={l} className="badge">{l}: {n}</span>)}
             </div>
             <div className="row">
-              <button className="btn dark" disabled={!pending} onClick={() => setDoc({ ...doc, entities: doc.entities.map((e) => (e.status === 'suggested' ? { ...e, status: 'accepted' } : e)) })}>■ Zaczernij wszystkie ({pending})</button>
-              <button className="btn" onClick={() => exp('txt')}>⬇ TXT</button>
-              <button className="btn primary" onClick={() => exp('docx')}>⬇ DOCX</button>
+              <button className="btn dark" disabled={!pending} onClick={() => setDoc({ ...doc, entities: doc.entities.map((e) => (e.status === 'suggested' ? { ...e, status: 'accepted' } : e)) })}><EyeOff /> Zaczernij wszystkie ({pending})</button>
+              <button className="btn" onClick={() => exp('txt')}><Download /> TXT</button>
+              <button className="btn primary" onClick={() => exp('docx')}><Download /> DOCX</button>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 14 }}>

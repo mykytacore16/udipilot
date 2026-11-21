@@ -1,3 +1,4 @@
+import { BookOpen, CalendarDays, Cpu, EyeOff, FilePlus2, Landmark, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 import Wnioski from './pages/Wnioski.jsx';
@@ -45,26 +46,26 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-logo">U</div>
+          <div className="brand-logo"><Landmark /></div>
           <div>
             <div className="brand-name">UDIPilot</div>
             <div className="brand-sub">Urząd Miasta Bydgoszczy</div>
           </div>
         </div>
         <nav className="nav">
-          <a href="#/" className={active('/')}><span className="ico">🗓</span> Rejestr wniosków</a>
-          <a href="#/nowy" className={active('/nowy')}><span className="ico">＋</span> Nowy wniosek</a>
-          <a href="#/anonimizator" className={active('/anonimizator')}><span className="ico">■</span> Anonimizator</a>
-          <a href="#/wiedza" className={active('/wiedza')}><span className="ico">📚</span> Baza wiedzy</a>
-          <a href="#/system" className={active('/system')}><span className="ico">🛡</span> Bezpieczeństwo i AI</a>
+          <a href="#/" className={active('/')}><CalendarDays /> Rejestr wniosków</a>
+          <a href="#/nowy" className={active('/nowy')}><FilePlus2 /> Nowy wniosek</a>
+          <a href="#/anonimizator" className={active('/anonimizator')}><EyeOff /> Anonimizator</a>
+          <a href="#/wiedza" className={active('/wiedza')}><BookOpen /> Baza wiedzy</a>
+          <a href="#/system" className={active('/system')}><ShieldCheck /> Bezpieczeństwo i AI</a>
         </nav>
         <div className="sidebar-foot">
-          <div><span className="dot" style={{ background: llm?.enabled ? (llm.local ? '#4ade80' : '#facc15') : '#4ade80' }} />
-            <b>{llm?.enabled ? (llm.local ? 'AI lokalne' : 'AI zewnętrzne (demo)') : 'Tryb offline'}</b></div>
-          <div style={{ opacity: .8, marginTop: 4 }}>
-            {llm?.enabled ? `Model: ${llm.model}` : 'Reguły + wyszukiwanie lokalne. Dane nie opuszczają Urzędu.'}
+          <div className="foot-title"><Cpu /> {llm?.enabled ? (llm.local ? 'AI lokalne' : 'AI zewnętrzne (demo)') : 'Tryb offline'}<span className="dot" style={{ background: llm?.enabled && !llm.local ? '#ff9f0a' : '#30d158' }} /></div>
+          <div className="foot-text">
+            {llm?.enabled ? llm.model.replace(/^.*\//, '').replace(/-instruct.*$/, '') : 'Reguły i wyszukiwanie lokalne'}
           </div>
-          <div style={{ opacity: .6, marginTop: 6 }}>Dziś: {status?.today?.split('-').reverse().join('.')}</div>
+          <div className="foot-text">Dane nie opuszczają Urzędu</div>
+          <div className="foot-date">{status?.today?.split('-').reverse().join('.')}</div>
         </div>
       </aside>
       <main className="main">{page}</main>

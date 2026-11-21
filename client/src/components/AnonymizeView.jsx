@@ -1,3 +1,4 @@
+import { Eye, EyeOff, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
 // Widok anonimizacji: propozycje na szaro → po akceptacji na czarno. Zaznaczenie tekstu = ręczne ukrycie.
@@ -94,7 +95,7 @@ export default function AnonymizeView({ text, entities, onChange, readOnly }) {
 
       {sel && (
         <div className="sel-btn" style={{ left: sel.x, top: sel.y }}>
-          <button className="btn dark sm" onMouseDown={(e) => e.preventDefault()} onClick={addManual}>■ Ukryj zaznaczony fragment</button>
+          <button className="btn dark sm" onMouseDown={(e) => e.preventDefault()} onClick={addManual}><EyeOff /> Ukryj zaznaczony fragment</button>
         </div>
       )}
 
@@ -102,7 +103,7 @@ export default function AnonymizeView({ text, entities, onChange, readOnly }) {
         <div className="popover" style={{ left: open.x, top: open.y }} onMouseUp={(e) => e.stopPropagation()}>
           <div className="spread" style={{ marginBottom: 6 }}>
             <b>{cur.label}</b>
-            <button className="btn ghost sm" onClick={() => setOpen(null)}>✕</button>
+            <button className="btn ghost sm" onClick={() => setOpen(null)}><X /></button>
           </div>
           <div className="mono" style={{ background: 'var(--surface-2)', padding: '4px 8px', borderRadius: 6, marginBottom: 8 }}>{cur.text}</div>
           <div className="small muted">Podstawa: {cur.basis}</div>
@@ -110,7 +111,7 @@ export default function AnonymizeView({ text, entities, onChange, readOnly }) {
           {cur.note && <div className="alert warn small" style={{ marginTop: 8 }}>{cur.note}</div>}
           {!readOnly && (
             <div className="row" style={{ marginTop: 10 }}>
-              <button className="btn dark sm" onClick={() => { setStatus(cur.id, 'accepted'); setOpen(null); }}>■ Zaczernij</button>
+              <button className="btn dark sm" onClick={() => { setStatus(cur.id, 'accepted'); setOpen(null); }}><EyeOff /> Zaczernij</button>
               <button className="btn sm" onClick={() => { setStatus(cur.id, 'rejected'); setOpen(null); }}>Pozostaw jawne</button>
               {cur.manual && <button className="btn sm danger" onClick={() => { onChange(entities.filter((e) => e.id !== cur.id)); setOpen(null); }}>Usuń</button>}
             </div>
@@ -140,8 +141,8 @@ export function AnonList({ entities, onChange, onFocus }) {
           </div>
           {e.status !== 'kept' && (
             <div className="row" style={{ gap: 4, alignItems: 'flex-start' }}>
-              {e.status !== 'accepted' && <button className="btn dark sm" title="Zaczernij" onClick={(ev) => { ev.stopPropagation(); onChange(entities.map((x) => (x.id === e.id ? { ...x, status: 'accepted' } : x))); }}>■</button>}
-              {e.status !== 'rejected' && <button className="btn sm" title="Pozostaw jawne" onClick={(ev) => { ev.stopPropagation(); onChange(entities.map((x) => (x.id === e.id ? { ...x, status: 'rejected' } : x))); }}>✓</button>}
+              {e.status !== 'accepted' && <button className="btn dark sm" title="Zaczernij" onClick={(ev) => { ev.stopPropagation(); onChange(entities.map((x) => (x.id === e.id ? { ...x, status: 'accepted' } : x))); }}><EyeOff /></button>}
+              {e.status !== 'rejected' && <button className="btn sm" title="Pozostaw jawne" onClick={(ev) => { ev.stopPropagation(); onChange(entities.map((x) => (x.id === e.id ? { ...x, status: 'rejected' } : x))); }}><Eye /></button>}
             </div>
           )}
         </div>

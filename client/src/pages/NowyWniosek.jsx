@@ -1,3 +1,4 @@
+import { ArrowLeft, Check, FileText, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { api, plDate } from '../api.js';
 import { Dropzone, DeptPicker, Spinner, useToast } from '../components/ui.jsx';
@@ -52,7 +53,7 @@ export default function NowyWniosek({ departments }) {
           <div className="muted small" style={{ textAlign: 'center' }}>— albo wklej treść wniosku (np. z e-maila) —</div>
           <textarea rows={7} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="Treść wniosku…" />
           <div className="row" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn primary" disabled={busy || paste.trim().length < 15} onClick={() => analyze(null)}>{busy ? <Spinner /> : '⚡'} Analizuj tekst</button>
+            <button className="btn primary" disabled={busy || paste.trim().length < 15} onClick={() => analyze(null)}>{busy ? <Spinner /> : <Sparkles />} Analizuj tekst</button>
           </div>
         </div>
       </div>
@@ -64,14 +65,14 @@ export default function NowyWniosek({ departments }) {
       <div className="page-head">
         <div><h1>Weryfikacja nowego wniosku</h1><p>Sprawdź i popraw propozycje systemu. Nic nie zostanie zapisane ani wysłane bez Twojej akceptacji.</p></div>
         <div className="row">
-          <button className="btn" onClick={() => setA(null)}>← Wróć</button>
-          <button className="btn primary" disabled={saving} onClick={save}>{saving ? <Spinner /> : '✓'} Zarejestruj wniosek</button>
+          <button className="btn" onClick={() => setA(null)}><ArrowLeft /> Wróć</button>
+          <button className="btn primary" disabled={saving} onClick={save}>{saving ? <Spinner /> : <Check />} Zarejestruj wniosek</button>
         </div>
       </div>
       <div className="grid-main">
         <div className="stack">
           <div className="card card-pad stack">
-            <div className="spread"><h2>Dane wniosku</h2>{a.filename && <span className="badge">📄 {a.filename}</span>}</div>
+            <div className="spread"><h2>Dane wniosku</h2>{a.filename && <span className="badge"><FileText /> {a.filename}</span>}</div>
             <div className="grid-2">
               <label className="field">Wnioskodawca<input value={a.meta.requester || ''} onChange={(e) => upd({ meta: { ...a.meta, requester: e.target.value } })} /></label>
               <label className="field">Kontakt (e-mail)<input value={a.meta.email || ''} onChange={(e) => upd({ meta: { ...a.meta, email: e.target.value } })} /></label>

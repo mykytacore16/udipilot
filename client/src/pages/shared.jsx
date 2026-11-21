@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { plDate } from '../api.js';
 import { RelBar } from '../components/ui.jsx';
@@ -24,7 +25,7 @@ export function SimilarList({ items }) {
       </div>
       <div className="row" style={{ marginTop: 4 }}>
         <button className="btn ghost sm" onClick={() => setOpen(open === i ? null : i)}>{open === i ? 'Zwiń' : 'Pokaż odpowiedź'}</button>
-        {s.wniosekId && <button className="btn ghost sm" onClick={() => go(`/wnioski/${s.wniosekId}`)}>Otwórz sprawę →</button>}
+        {s.wniosekId && <button className="btn ghost sm" onClick={() => go(`/wnioski/${s.wniosekId}`)}>Otwórz sprawę <ArrowRight /></button>}
       </div>
       {open === i && (
         <div className="small" style={{ background: 'var(--surface-2)', borderRadius: 8, padding: 10, marginTop: 4 }}>

@@ -36,6 +36,8 @@ ws.addEventListener('message', (e) => {
 const cdp = (method, params = {}) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
 const js = async (expr) => (await cdp('Runtime.evaluate', { expression: expr, awaitPromise: true })).result?.result?.value;
 
+await cdp('Network.enable');
+await cdp('Network.setCacheDisabled', { cacheDisabled: true });
 await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1.5, mobile: false });
 const go = async (hash, wait = 900) => { await cdp('Page.navigate', { url: `${BASE}/${hash}` }); await sleep(wait); };
 const click = (text) => js(`(() => { const b = [...document.querySelectorAll('button')].find(x => x.textContent.includes(${JSON.stringify(text)})); if (b) b.click(); return !!b; })()`);

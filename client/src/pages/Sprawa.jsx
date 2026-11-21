@@ -1,3 +1,4 @@
+import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, ClipboardCopy, Download, EyeOff, FileText, Hourglass, Mail, Paperclip, Save, Send, Sparkles, TriangleAlert, Wand2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, download, plDate, STATUS } from '../api.js';
 import { DeptPicker, Dropzone, Modal, Spinner, StatusBadge, UrgencyBadge, useToast } from '../components/ui.jsx';
@@ -41,14 +42,14 @@ export default function Sprawa({ id, departments, llm }) {
 
   return (
     <div>
-      <div className="row small" style={{ marginBottom: 10 }}><a href="#/">← Rejestr wniosków</a></div>
+      <div className="row small" style={{ marginBottom: 10 }}><a href="#/" className="back"><ChevronLeft /> Rejestr wniosków</a></div>
       <div className="card card-pad" style={{ marginBottom: 16 }}>
         <div className="spread" style={{ alignItems: 'flex-start' }}>
           <div className="grow">
             <div className="row" style={{ gap: 8 }}>
               <h1>Wniosek {w.number}</h1>
               <StatusBadge status={w.status} />
-              {w.filename && <span className="badge">📄 {w.filename}</span>}
+              {w.filename && <span className="badge"><FileText /> {w.filename}</span>}
             </div>
             <div style={{ fontSize: 15, marginTop: 6 }}>{w.summary}</div>
             <div className="muted small" style={{ marginTop: 4 }}>
@@ -86,10 +87,10 @@ export default function Sprawa({ id, departments, llm }) {
         )}
         <div className="row" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
           {w.status === 'doprecyzowanie'
-            ? <button className="btn primary" onClick={() => setModal('doprec-in')}>✓ Wpłynęło doprecyzowanie</button>
-            : w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('doprec')}>❓ Wezwij do doprecyzowania</button>}
-          {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('kwerenda')}>⏳ Kwerenda / przedłuż termin</button>}
-          {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('sent')}>✉ Oznacz jako wysłaną</button>}
+            ? <button className="btn primary" onClick={() => setModal('doprec-in')}><Check /> Wpłynęło doprecyzowanie</button>
+            : w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('doprec')}><CircleHelp /> Wezwij do doprecyzowania</button>}
+          {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('kwerenda')}><Hourglass /> Kwerenda / przedłuż termin</button>}
+          {w.status !== 'wyslana' && <button className="btn" onClick={() => setModal('sent')}><Send /> Oznacz jako wysłaną</button>}
         </div>
       </div>
 
@@ -98,7 +99,7 @@ export default function Sprawa({ id, departments, llm }) {
           <div className="tabs">
             <button className={tab === 'pytania' ? 'active' : ''} onClick={() => setTab('pytania')}>1. Wniosek i wydziały</button>
             <button className={tab === 'odpowiedzi' ? 'active' : ''} onClick={() => setTab('odpowiedzi')}>2. Odpowiedzi <span className="badge count">{c.responses.length}</span></button>
-            <button className={tab === 'projekt' ? 'active' : ''} onClick={() => setTab('projekt')}>3. Projekt pisma {c.draft && (c.verification?.ok ? <span className="badge green count">✓</span> : <span className="badge orange count">!</span>)}</button>
+            <button className={tab === 'projekt' ? 'active' : ''} onClick={() => setTab('projekt')}>3. Projekt pisma {c.draft && (c.verification?.ok ? <span className="badge green count"><Check /></span> : <span className="badge orange count">!</span>)}</button>
             <button className={tab === 'anon' ? 'active' : ''} onClick={() => setTab('anon')}>4. Anonimizacja i eksport {pending > 0 && <span className="badge count">{pending}</span>}</button>
             <button className={tab === 'historia' ? 'active' : ''} onClick={() => setTab('historia')}>Historia</button>
           </div>
@@ -170,16 +171,16 @@ function TabPytania({ c, departments, call, assigned }) {
       <div className="card card-pad" style={{ background: 'var(--surface-2)' }}>
         <div className="spread" style={{ marginBottom: 8 }}>
           <h3>Zapytania do wydziałów</h3>
-          <button className="btn primary sm" disabled={!assigned.length} onClick={() => call(() => api.post(`/api/wnioski/${id}/departments-notified`, { codes: assigned }), 'Status: zapytania przekazane do wydziałów')}>✓ Oznacz: zapytania przekazane</button>
+          <button className="btn primary sm" disabled={!assigned.length} onClick={() => call(() => api.post(`/api/wnioski/${id}/departments-notified`, { codes: assigned }), 'Status: zapytania przekazane do wydziałów')}><Check /> Oznacz: zapytania przekazane</button>
         </div>
         <p className="muted small" style={{ marginBottom: 8 }}>System przygotowuje treść zapytania z listą pytań i terminem wewnętrznym. Wysyłka odbywa się poza systemem (e-mail / EZD) – UDIPilot niczego nie wysyła samodzielnie.</p>
         <div className="row">
-          {assigned.map((code) => <button key={code} className="btn sm" onClick={() => showReq(code)}>✉ Treść zapytania do {code}</button>)}
+          {assigned.map((code) => <button key={code} className="btn sm" onClick={() => showReq(code)}><Mail /> Treść zapytania do {code}</button>)}
           {!assigned.length && <span className="faint small">Przypisz wydziały do pytań.</span>}
         </div>
       </div>
       {reqText && (
-        <Modal title={`Zapytanie do ${reqText.code}`} onClose={() => setReqText(null)} footer={<button className="btn primary" onClick={() => { navigator.clipboard.writeText(reqText.text); setReqText(null); }}>📋 Kopiuj do schowka</button>}>
+        <Modal title={`Zapytanie do ${reqText.code}`} onClose={() => setReqText(null)} footer={<button className="btn primary" onClick={() => { navigator.clipboard.writeText(reqText.text); setReqText(null); }}><ClipboardCopy /> Kopiuj do schowka</button>}>
           <textarea rows={14} defaultValue={reqText.text} className="mono" />
         </Modal>
       )}
@@ -219,7 +220,7 @@ function TabOdpowiedzi({ c, departments, call, assigned }) {
                 <td><b>{q.no}</b></td>
                 <td className="small">{q.text}</td>
                 <td>{q.departments.map((d) => <span key={d} className="chip" style={{ marginRight: 4 }}>{d}</span>)}</td>
-                <td>{got.length === q.departments.length && got.length ? <span className="badge green">✓ jest</span> : <span className="badge orange">oczekuje</span>}</td>
+                <td>{got.length === q.departments.length && got.length ? <span className="badge green"><Check /> jest</span> : <span className="badge orange">oczekuje</span>}</td>
               </tr>
             );
           })}
@@ -316,7 +317,7 @@ function TabProjekt({ c, call, llm, toNext }) {
       {type === 'bip' && <label className="field">Link do BIP<input value={bipLink} onChange={(e) => setBipLink(e.target.value)} placeholder="https://bip.um.bydgoszcz.pl/…" /></label>}
       {type === 'odmowa' && <div className="alert warn small">Odmowa wymaga decyzji administracyjnej – projekt zawiera szkielet z pouczeniem; przed podpisem konieczna opinia radcy prawnego.</div>}
       <div className="row">
-        <button className="btn primary" disabled={busy} onClick={generate}>{busy ? <Spinner /> : '⚡'} {c.draft ? 'Generuj ponownie' : 'Generuj projekt odpowiedzi'}</button>
+        <button className="btn primary" disabled={busy} onClick={generate}>{busy ? <Spinner /> : <Sparkles />} {c.draft ? 'Generuj ponownie' : 'Generuj projekt odpowiedzi'}</button>
         <span className="faint small">Treść merytoryczna pochodzi wyłącznie z odpowiedzi wydziałów – system nie dopisuje faktów.</span>
       </div>
 
@@ -327,8 +328,8 @@ function TabProjekt({ c, call, llm, toNext }) {
             <h3>Projekt: {c.draft.typeLabel}</h3>
             <div className="row">
               {dirty && <span className="badge orange">niezapisane zmiany</span>}
-              <button className="btn" disabled={!dirty} onClick={save}>💾 Zapisz i zweryfikuj</button>
-              <button className="btn primary" disabled={dirty} onClick={toNext}>Dalej: anonimizacja →</button>
+              <button className="btn" disabled={!dirty} onClick={save}><Save /> Zapisz i zweryfikuj</button>
+              <button className="btn primary" disabled={dirty} onClick={toNext}>Dalej: anonimizacja <ArrowRight /></button>
             </div>
           </div>
           <Verification v={c.verification} />
@@ -339,19 +340,19 @@ function TabProjekt({ c, call, llm, toNext }) {
               return (
                 <div key={b.id} className={`block ${b.kind} ${b.kind === 'answer' && issues ? 'issue' : ''}`}>
                   {b.kind === 'answer' && <div className="faint small" style={{ marginBottom: 2 }}>Pytanie {b.questionNo}: {b.question}</div>}
-                  {b.kind === 'missing' && <div className="small" style={{ color: 'var(--yellow)', fontWeight: 600 }}>⚠ Brak odpowiedzi na pytanie {b.questionNo}: {b.question}</div>}
+                  {b.kind === 'missing' && <div className="small" style={{ color: 'var(--yellow)', fontWeight: 600 }}><TriangleAlert /> Brak odpowiedzi na pytanie {b.questionNo}: {b.question}</div>}
                   {editable ? (
                     <AutoText value={edits[b.id] ?? b.text} onChange={(v) => setEdits((e) => ({ ...e, [b.id]: v }))} className={b.kind} />
                   ) : (
                     <div className={b.kind}>{b.text}</div>
                   )}
-                  {issues?.map((i, k) => <div key={k} className="issue-msg">⚠ {i.reason}: „{i.sentence.slice(0, 90)}{i.sentence.length > 90 ? '…' : ''}”</div>)}
+                  {issues?.map((i, k) => <div key={k} className="issue-msg"><TriangleAlert /> {i.reason}: „{i.sentence.slice(0, 90)}{i.sentence.length > 90 ? '…' : ''}”</div>)}
                   {b.sources?.length > 0 && (
                     <div className="src">
                       {b.sources.map((s, k) => (
-                        <button key={k} className="srcchip" onClick={() => setSrcOpen(srcOpen === `${b.id}${k}` ? null : `${b.id}${k}`)}>📎 {s.department}{s.file ? ` · ${s.file}` : ''}</button>
+                        <button key={k} className="srcchip" onClick={() => setSrcOpen(srcOpen === `${b.id}${k}` ? null : `${b.id}${k}`)}><Paperclip /> {s.department}{s.file ? ` · ${s.file}` : ''}</button>
                       ))}
-                      {llm?.enabled && b.kind === 'answer' && <button className="srcchip" style={{ background: 'var(--violet-soft)', color: 'var(--violet)' }} onClick={() => doPolish(b)}>✨ Popraw styl (AI)</button>}
+                      {llm?.enabled && b.kind === 'answer' && <button className="srcchip" style={{ background: 'var(--violet-soft)', color: 'var(--violet)' }} onClick={() => doPolish(b)}><Wand2 /> Popraw styl (AI)</button>}
                     </div>
                   )}
                   {b.sources?.map((s, k) => srcOpen === `${b.id}${k}` && (
@@ -388,7 +389,7 @@ function TabProjekt({ c, call, llm, toNext }) {
 
 function Verification({ v }) {
   if (!v) return null;
-  if (v.ok) return <div className="alert ok small">✓ Weryfikacja: każde zdanie merytoryczne ma oparcie w odpowiedziach wydziałów, wszystkie liczby zgodne ze źródłami, odpowiedziano na wszystkie pytania.</div>;
+  if (v.ok) return <div className="alert ok small"><CircleCheck /> Weryfikacja: każde zdanie merytoryczne ma oparcie w odpowiedziach wydziałów, wszystkie liczby zgodne ze źródłami, odpowiedziano na wszystkie pytania.</div>;
   return (
     <div className="alert warn small">
       <b>Wymaga uwagi:</b>
@@ -425,8 +426,8 @@ function TabAnon({ c, call, llm }) {
         W eksporcie dane są <b>fizycznie usuwane</b> z pliku, a nie przykrywane.
       </div>
       <div className="row">
-        <button className="btn dark" disabled={!pending} onClick={() => saveEnts(ents.map((e) => (e.status === 'suggested' ? { ...e, status: 'accepted' } : e)))}>■ Zaczernij wszystkie propozycje ({pending})</button>
-        {llm?.enabled && <button className="btn" disabled={busyAi} onClick={async () => { setBusyAi(true); const r = await call(() => api.post(`/api/wnioski/${id}/entities/ai`)); if (r) toast(`AI: ${r.added} nowych propozycji`); setBusyAi(false); }}>{busyAi ? <Spinner /> : '✨'} Druga warstwa: AI</button>}
+        <button className="btn dark" disabled={!pending} onClick={() => saveEnts(ents.map((e) => (e.status === 'suggested' ? { ...e, status: 'accepted' } : e)))}><EyeOff /> Zaczernij wszystkie propozycje ({pending})</button>
+        {llm?.enabled && <button className="btn" disabled={busyAi} onClick={async () => { setBusyAi(true); const r = await call(() => api.post(`/api/wnioski/${id}/entities/ai`)); if (r) toast(`AI: ${r.added} nowych propozycji`); setBusyAi(false); }}>{busyAi ? <Spinner /> : <Wand2 />} Druga warstwa: AI</button>}
         <span className="grow" />
         <span className="muted small">{accepted} zaczernionych · {pending} do decyzji</span>
       </div>
@@ -441,11 +442,11 @@ function TabAnon({ c, call, llm }) {
         <div>
           <h3>Eksport projektu pisma</h3>
           <div className="muted small">Plik do sprawdzenia merytorycznego i podpisu. System niczego nie wysyła.</div>
-          {pending > 0 && <div className="small" style={{ color: 'var(--orange)', marginTop: 4 }}>⚠ {pending} propozycji anonimizacji czeka na decyzję – w eksporcie pozostaną jawne.</div>}
+          {pending > 0 && <div className="small" style={{ color: 'var(--orange)', marginTop: 4 }}><TriangleAlert /> {pending} propozycji anonimizacji czeka na decyzję – w eksporcie pozostaną jawne.</div>}
         </div>
         <div className="row">
-          <button className="btn" onClick={() => exp('txt')}>⬇ TXT</button>
-          <button className="btn primary" onClick={() => exp('docx')}>⬇ Pobierz DOCX</button>
+          <button className="btn" onClick={() => exp('txt')}><Download /> TXT</button>
+          <button className="btn primary" onClick={() => exp('docx')}><Download /> Pobierz DOCX</button>
         </div>
       </div>
     </div>

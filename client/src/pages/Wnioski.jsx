@@ -1,3 +1,4 @@
+import { Download, Plus, TriangleAlert, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api, download, plDate, STATUS, STATUS_ORDER } from '../api.js';
 import { StatusBadge, UrgencyBadge, Spinner, Modal, useToast } from '../components/ui.jsx';
@@ -62,11 +63,11 @@ export default function Wnioski() {
             {data.years.map((y) => <option key={y} value={y}>Rok {y}</option>)}
           </select>
           <label className="btn" title="Wczytaj rejestr w formacie arkusza UMB (XLSX)">
-            ⬆ Import z Excela
+            <Upload /> Import z Excela
             <input type="file" accept=".xlsx" hidden onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importXlsx(f); }} />
           </label>
-          <button className="btn" onClick={() => download(`/api/wnioski/export.xlsx?year=${data.year}`, null, 'wnioski.xlsx').catch((e) => toast(e.message, 'err'))}>⬇ Eksport do Excela</button>
-          <button className="btn primary" onClick={() => go('/nowy')}>＋ Nowy wniosek</button>
+          <button className="btn" onClick={() => download(`/api/wnioski/export.xlsx?year=${data.year}`, null, 'wnioski.xlsx').catch((e) => toast(e.message, 'err'))}><Download /> Eksport do Excela</button>
+          <button className="btn primary" onClick={() => go('/nowy')}><Plus /> Nowy wniosek</button>
         </div>
       </div>
 
@@ -81,7 +82,7 @@ export default function Wnioski() {
       <div className="card">
         <div className="card-head" style={{ flexWrap: 'wrap' }}>
           <div className="row">
-            <div className="tabs" style={{ border: 0, padding: 0, overflow: 'visible' }}>
+            <div className="segmented">
               <button className={view === 'tabela' ? 'active' : ''} onClick={() => setView('tabela')}>Tabela</button>
               <button className={view === 'kalendarz' ? 'active' : ''} onClick={() => setView('kalendarz')}>Kalendarz</button>
             </div>
@@ -134,7 +135,7 @@ function Table({ items }) {
           {items.map((w) => (
             <tr key={w.id} className={`clickable u-${w.urgency.level}`} onClick={() => go(`/wnioski/${w.id}`)}>
               <td className="muted">{w.lp}</td>
-              <td><b className="mono" style={{ fontSize: 12 }}>{w.number}</b>{w.import_notes?.length > 0 && <div title={w.import_notes.join('\n')} className="small" style={{ color: 'var(--orange)', cursor: 'help' }}>⚠ uwagi ({w.import_notes.length})</div>}</td>
+              <td><b className="mono" style={{ fontSize: 12 }}>{w.number}</b>{w.import_notes?.length > 0 && <div title={w.import_notes.join('\n')} className="small" style={{ color: 'var(--orange)', cursor: 'help' }}><TriangleAlert /> uwagi ({w.import_notes.length})</div>}</td>
               <td className="small">{w.requester || '—'}</td>
               <td>{w.summary}</td>
               <td>{plDate(w.received_at)}</td>
@@ -191,12 +192,12 @@ function Calendar({ items, year }) {
               <div className="dnum"><span>{d.getUTCDate()}</span>{hol[s] && <span className="hol" title={hol[s]}>{hol[s].slice(0, 14)}</span>}</div>
               {dl.map((w) => (
                 <div key={`d${w.id}`} className={`ev deadline ${w.urgency.level}`} title={`Termin: ${w.number} – ${w.summary}`} onClick={() => go(`/wnioski/${w.id}`)}>
-                  ⏰ {w.number} {w.summary}
+                  {w.number} {w.summary}
                 </div>
               ))}
               {inc.map((w) => (
                 <div key={`i${w.id}`} className="ev in" title={`Wpływ: ${w.number}`} onClick={() => go(`/wnioski/${w.id}`)}>
-                  ↘ wpływ {w.number}
+                  wpływ {w.number}
                 </div>
               ))}
             </div>

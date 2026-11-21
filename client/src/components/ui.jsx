@@ -1,3 +1,4 @@
+import { Upload, X } from 'lucide-react';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { STATUS, URGENCY_CLS } from '../api.js';
 
@@ -31,7 +32,7 @@ export function Modal({ title, onClose, children, footer }) {
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <div className="card-head"><h2>{title}</h2><button className="btn ghost sm" onClick={onClose}>✕</button></div>
+        <div className="card-head"><h2>{title}</h2><button className="btn ghost sm" onClick={onClose}><X /></button></div>
         <div className="card-pad">{children}</div>
         {footer && <div className="card-pad row" style={{ justifyContent: 'flex-end', borderTop: '1px solid var(--border)' }}>{footer}</div>}
       </div>
@@ -63,7 +64,7 @@ export function Dropzone({ onFile, accept = '.pdf,.docx,.txt', label = 'Przecią
       <input ref={input} type="file" accept={accept} hidden onChange={(e) => { e.target.files[0] && onFile(e.target.files[0]); e.target.value = ''; }} />
       {busy ? <div className="row" style={{ justifyContent: 'center' }}><Spinner /> Analizuję dokument…</div> : (
         <>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+          <div className="drop-ico"><Upload /></div>
           <div className="big">{label}</div>
           <div className="muted small">{hint}</div>
         </>
@@ -82,7 +83,7 @@ export function DeptPicker({ value = [], onChange, departments, suggestions = []
         {value.map((c) => (
           <span key={c} className="chip" title={name(c)}>
             {c} <span style={{ fontWeight: 400 }}>· {name(c).replace(/^(Wydział|Biuro)\s+/, '')}</span>
-            <button onClick={() => onChange(value.filter((x) => x !== c))} title="Usuń">✕</button>
+            <button onClick={() => onChange(value.filter((x) => x !== c))} title="Usuń"><X /></button>
           </span>
         ))}
         {adding ? (

@@ -1,3 +1,4 @@
+import { RotateCcw } from 'lucide-react';
 export default function OSystemie({ status }) {
   const llm = status?.llm;
   return (
@@ -8,7 +9,7 @@ export default function OSystemie({ status }) {
           if (!confirm('Przywrócić dane demonstracyjne? Wszystkie bieżące wnioski i dokumenty zostaną zastąpione danymi testowymi.')) return;
           await fetch('/api/demo/reset', { method: 'POST' });
           window.location.hash = '#/';
-        }}>↺ Przywróć dane demo</button>
+        }}><RotateCcw /> Przywróć dane demo</button>
       </div>
       <div className="grid-2">
         <div className="card card-pad stack">
