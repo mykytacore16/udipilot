@@ -18,6 +18,8 @@ Z lokalnym modelem: `docker compose --profile ai up -d` i ustaw `LLM_BASE_URL=ht
 Tryb deweloperski: `npm run dev` (API) + `npm run dev:client` (Vite, http://localhost:5173).
 Testy: `npm test`. Pliki do testów jury: `samples/` (generowane `npm run samples`).
 
+**Instrukcja uruchomienia krok po kroku: [docs/JAK_URUCHOMIC.md](docs/JAK_URUCHOMIC.md)**
+
 ## Jak jury może przetestować (scenariusz z opisu zadania)
 
 | Test z regulaminu | Gdzie w aplikacji |
