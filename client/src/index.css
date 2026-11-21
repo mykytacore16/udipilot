@@ -217,6 +217,8 @@ tr.u-done td { color: var(--muted); }
 .step.done { color: var(--green); }
 .step.done::before { background: #34c759; }
 .step.done::after { border-color: #34c759; background: #34c759; }
+.step.skip { color: var(--faint); }
+.step.skip::after { background: var(--surface); border-color: #34c759; border-style: dashed; }
 .step.cur { color: var(--text); font-weight: 600; }
 .step.cur::before { background: linear-gradient(90deg, #34c759 50%, var(--fill-2) 50%); }
 .step.cur::after { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0, 113, 227, .15); }

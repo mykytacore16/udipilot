@@ -68,10 +68,12 @@ export default function Sprawa({ id, departments, llm }) {
             const order = ['nowy', 'w_wydzialach', 'kwerenda', 'przygotowana', 'wyslana'];
             const ci = order.indexOf(w.status === 'doprecyzowanie' ? 'nowy' : w.status);
             const si = order.indexOf(s);
-            let cls = si < ci ? 'done' : si === ci ? 'cur' : '';
-            if (s === 'kwerenda' && !w.extension_until && ci > si) cls = '';
+            let cls = si < ci || w.status === 'wyslana' ? 'done' : si === ci ? 'cur' : '';
+            // Kwerenda jest opcjonalna: gdy sprawa poszła dalej bez przedłużenia – etap pominięty, linia ciągła.
+            const skipped = s === 'kwerenda' && !w.extension_until && ci > si;
+            if (skipped) cls = 'done skip';
             if (s === 'kwerenda' && w.extension_until && ci >= si) cls = ci === si ? 'cur' : 'done';
-            return <div key={s} className={`step ${cls}`}>{l}{s === 'kwerenda' && w.extension_until ? ` (do ${plDate(w.extension_until)})` : ''}</div>;
+            return <div key={s} className={`step ${cls}`}>{l}{s === 'kwerenda' && w.extension_until ? ` (do ${plDate(w.extension_until)})` : skipped ? ' – pominięta' : ''}</div>;
           })}
         </div>
         {w.import_notes?.length > 0 && (
