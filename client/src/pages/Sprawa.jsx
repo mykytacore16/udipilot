@@ -1,10 +1,13 @@
-import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, ClipboardCopy, Download, EyeOff, FileText, Hourglass, Mail, Paperclip, Save, Send, Sparkles, TriangleAlert, Wand2 } from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, ClipboardCopy, Download, EyeOff, FileText, Hourglass, Mail, Save, Send, Sparkles, TriangleAlert, Wand2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, download, plDate, STATUS } from '../api.js';
 import { DeptPicker, Dropzone, Modal, Spinner, StatusBadge, UrgencyBadge, useToast } from '../components/ui.jsx';
 import AnonymizeView, { AnonList } from '../components/AnonymizeView.jsx';
 import { HintsList, SimilarList } from './shared.jsx';
 import { go } from '../App.jsx';
+import LetterEditor from '../components/LetterEditor.jsx';
+
+let docSeq = 0;
 
 const TYPES = [
   ['udostepnienie', 'Udostępnienie informacji', 'art. 10 ust. 1, art. 13 ust. 1'],
@@ -269,10 +272,10 @@ function TabProjekt({ c, call, llm, toNext }) {
   const [bipLink, setBipLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [edits, setEdits] = useState({});
-  const [srcOpen, setSrcOpen] = useState(null);
   const [polish, setPolish] = useState(null);
 
   useEffect(() => setEdits({}), [c.draft?.generatedAt]);
+  const docKey = useMemo(() => ++docSeq, [c.draft?.blocks]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = Object.keys(edits).length > 0;
   const issuesBy = useMemo(() => {
     const m = {};
@@ -335,38 +338,7 @@ function TabProjekt({ c, call, llm, toNext }) {
             </div>
           </div>
           <Verification v={c.verification} />
-          <div className="card card-pad letter stack" style={{ gap: 4 }}>
-            {c.draft.blocks.map((b) => {
-              const editable = !['header', 'closing', 'title'].includes(b.kind);
-              const issues = issuesBy[b.id];
-              return (
-                <div key={b.id} className={`block ${b.kind} ${b.kind === 'answer' && issues ? 'issue' : ''}`}>
-                  {b.kind === 'answer' && <div className="faint small" style={{ marginBottom: 2 }}>Pytanie {b.questionNo}: {b.question}</div>}
-                  {b.kind === 'missing' && <div className="small" style={{ color: 'var(--yellow)', fontWeight: 600 }}><TriangleAlert /> Brak odpowiedzi na pytanie {b.questionNo}: {b.question}</div>}
-                  {editable ? (
-                    <AutoText value={edits[b.id] ?? b.text} onChange={(v) => setEdits((e) => ({ ...e, [b.id]: v }))} className={b.kind} />
-                  ) : (
-                    <div className={b.kind}>{b.text}</div>
-                  )}
-                  {issues?.map((i, k) => <div key={k} className="issue-msg"><TriangleAlert /> {i.reason}: „{i.sentence.slice(0, 90)}{i.sentence.length > 90 ? '…' : ''}”</div>)}
-                  {b.sources?.length > 0 && (
-                    <div className="src">
-                      {b.sources.map((s, k) => (
-                        <button key={k} className="srcchip" onClick={() => setSrcOpen(srcOpen === `${b.id}${k}` ? null : `${b.id}${k}`)}><Paperclip /> {s.department}{s.file ? ` · ${s.file}` : ''}</button>
-                      ))}
-                      {llm?.enabled && b.kind === 'answer' && <button className="srcchip" style={{ background: 'var(--violet-soft)', color: 'var(--violet)' }} onClick={() => doPolish(b)}><Wand2 /> Popraw styl (AI)</button>}
-                    </div>
-                  )}
-                  {b.sources?.map((s, k) => srcOpen === `${b.id}${k}` && (
-                    <div key={k} className="small" style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 6, padding: 8, marginTop: 6, fontFamily: 'Segoe UI' }}>
-                      <div className="faint">Źródło: {s.how}</div>
-                      <div className="pre">„{s.excerpt}”</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          <LetterEditor key={docKey} draft={c.draft} verification={c.verification} issuesBy={issuesBy} edits={edits} setEdits={setEdits} onSave={save} onPolish={doPolish} llm={llm} dirty={dirty} />
         </>
       )}
       {polish && (
@@ -399,12 +371,6 @@ function Verification({ v }) {
       {v.issues?.length > 0 && <div>• {v.issues.length} zdanie(a) bez potwierdzenia w źródłach lub z liczbami spoza odpowiedzi wydziałów (zaznaczone na czerwono).</div>}
     </div>
   );
-}
-
-function AutoText({ value, onChange, className }) {
-  const ref = useRef();
-  useEffect(() => { const el = ref.current; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }, [value]);
-  return <textarea ref={ref} rows={1} lang="pl" spellCheck={false} className={className} value={value} onChange={(e) => onChange(e.target.value)} />;
 }
 
 // ---------------- TAB 4 ----------------

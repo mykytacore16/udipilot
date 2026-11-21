@@ -323,3 +323,38 @@ table.t td .mono { font-family: inherit; font-size: 12.5px; font-variant-numeric
 .ai-form { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
 .ai-progress .bar { height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; margin-top: 6px; }
 .ai-progress .bar i { display: block; height: 100%; background: var(--primary); transition: width .4s; }
+
+/* ---------- Edytor pisma (jeden dokument) ---------- */
+.editor { display: flex; flex-direction: column; gap: 10px; }
+.editor-bar { display: flex; align-items: center; gap: 4px; position: sticky; top: 0; z-index: 5; background: var(--surface, #fff); border: 1px solid var(--border); border-radius: 12px; padding: 6px 8px; backdrop-filter: saturate(180%) blur(12px); }
+.editor-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+.editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .editor-grid { grid-template-columns: minmax(0, 1fr); } }
+.editor-page { background: #f2f2f5; border-radius: 14px; padding: 24px; }
+.doc-paper { background: #fff; max-width: 760px; margin: 0 auto; padding: 56px 64px 56px 88px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06); outline: none; min-height: 600px; caret-color: var(--primary); }
+.doc-paper .seg { position: relative; padding: 2px 8px; margin: 0 -8px 10px; border-radius: 6px; transition: background .15s, box-shadow .15s; }
+.doc-paper .seg-body { white-space: pre-wrap; outline: none; min-height: 1.65em; }
+.doc-paper .seg.answer .seg-body, .doc-paper .seg.missing .seg-body, .doc-paper .seg.intro .seg-body, .doc-paper .seg.template .seg-body { text-align: justify; }
+.doc-paper .seg-body.header, .doc-paper .seg-body.closing, .doc-paper .seg-body.signature, .doc-paper .seg-body.address { text-align: right; }
+.doc-paper .seg-body.title { text-align: center; font-weight: 700; margin: 8px 0; }
+.doc-paper .seg-body.header, .doc-paper .seg-body.title, .doc-paper .seg-body.closing { color: #3a3a3c; cursor: default; user-select: text; }
+.doc-paper .seg.answer { box-shadow: inset 2px 0 0 rgba(0, 113, 227, .25); }
+.doc-paper .seg.missing { background: var(--yellow-soft); box-shadow: inset 2px 0 0 #ffcc00; }
+.doc-paper .seg.issue { background: var(--red-soft); box-shadow: inset 2px 0 0 #ff3b30; }
+.doc-paper .seg.active { background: rgba(0, 113, 227, .05); box-shadow: inset 2px 0 0 var(--primary); }
+.doc-paper .seg.issue.active { background: var(--red-soft); box-shadow: inset 2px 0 0 #ff3b30; }
+.seg-tag { position: absolute; left: -76px; top: 3px; width: 62px; text-align: right; font: 600 11px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--primary); user-select: none; cursor: default; display: inline-flex; justify-content: flex-end; align-items: center; gap: 3px; }
+.seg-tag .lucide { width: 12px; height: 12px; }
+.seg.missing .seg-tag { color: #b38600; }
+.seg.issue .seg-tag { color: var(--red); }
+.editor-side { position: sticky; top: 56px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 80px); overflow: auto; }
+.editor-side h4 .lucide { width: 14px; height: 14px; }
+.outline-item { display: flex; align-items: center; gap: 8px; text-align: left; border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12.5px; min-width: 0; }
+.outline-item .faint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.outline-item:hover { background: var(--primary-soft); }
+.outline-item.on { background: var(--primary-soft); color: var(--primary); }
+.outline-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d1d6; flex: none; }
+.outline-item .dot.green { background: #34c759; } .outline-item .dot.red { background: #ff3b30; } .outline-item .dot.yellow { background: #ffcc00; }
+.srcchip.on { background: var(--primary-soft); border-color: var(--primary-2, var(--primary)); }
+.src-excerpt { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.editor-side .src { display: flex; gap: 6px; flex-wrap: wrap; }
