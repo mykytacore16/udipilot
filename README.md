@@ -95,7 +95,7 @@ Rekomendowany model docelowy (serwer Urzędu): **Bielik-11B-v2.x-Instruct** (Oll
 
 - Biblioteki open source: Express, Multer, React, Vite, unpdf (pdf.js), mammoth, docx, pdfkit (tylko do generowania plików testowych).
 - Lista wydziałów i biur UMB – z BIP Urzędu Miasta Bydgoszczy.
-- Kod przygotowany z pomocą asystenta AI (Claude); koncepcja, testy i decyzje – zespół LumenCode.
+- Kod przygotowany z pomocą asystenta AI (Claude); koncepcja, testy i decyzje – zespół LIPSTICK.
 
 ## Ograniczenia prototypu
 

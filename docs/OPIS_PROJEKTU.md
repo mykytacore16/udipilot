@@ -1,6 +1,6 @@
 # UDIPilot – Inteligentny Asystent Urzędnika
 
-**Zespół:** LumenCode – Oleksii Reznik, Daniil Pavlichenko, Hlib Tkachenko, Mykyta Korkishko
+**Zespół:** LIPSTICK – Mykyta Korkishko
 **Wyzwanie:** Inteligentny asystent urzędnika – Urząd Miasta Bydgoszczy
 
 ## Problem
