@@ -7,7 +7,7 @@ COPY client client
 RUN npm --prefix client run build
 
 FROM node:22-alpine
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=3001 DB_FILE=/data/udipilot.db
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 DB_FILE=/data/udipilot.db
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
@@ -16,5 +16,5 @@ COPY --from=build /app/client/dist client/dist
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME /data
-EXPOSE 3001
+EXPOSE 3000
 CMD ["sh", "-c", "[ -f /data/udipilot.db ] || node server/seed.js; exec node server/index.js"]

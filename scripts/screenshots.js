@@ -1,5 +1,5 @@
 // Zrzuty ekranu do prezentacji: headless Edge/Chrome sterowany przez CDP (bez dodatkowych zależności).
-// Użycie: node scripts/screenshots.js [ścieżka_do_przeglądarki]  (serwer musi działać na :3001)
+// Użycie: node scripts/screenshots.js [ścieżka_do_przeglądarki]  (serwer musi działać na :3000)
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,7 +10,7 @@ const BROWSER = process.argv[2] || [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   '/usr/bin/chromium', '/usr/bin/google-chrome',
 ].find(existsSync);
-const BASE = process.env.BASE || 'http://localhost:3001';
+const BASE = process.env.BASE || 'http://localhost:3000';
 const OUT = new URL('../docs/screens/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 

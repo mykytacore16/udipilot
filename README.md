@@ -9,10 +9,10 @@ Wymagania: Node.js ≥ 22.5 (wbudowany SQLite). Bez Dockera, bez GPU, bez Intern
 
 ```bash
 npm run setup      # instalacja, build frontendu, dane testowe
-npm start          # http://127.0.0.1:3001
+npm start          # http://127.0.0.1:3000
 ```
 
-Docker (on-premise): `docker compose up -d` → http://localhost:3001
+Docker (on-premise): `docker compose up -d` → http://localhost:3000
 Z lokalnym modelem: `docker compose --profile ai up -d` i ustaw `LLM_BASE_URL=http://ollama:11434/v1`, `LLM_MODEL=…` (patrz `.env.example`).
 
 Tryb deweloperski: `npm run dev` (API) + `npm run dev:client` (Vite, http://localhost:5173).

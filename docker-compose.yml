@@ -1,10 +1,10 @@
-# Uruchomienie: docker compose up -d   →  http://localhost:3001
+# Uruchomienie: docker compose up -d   →  http://localhost:3000
 # Profil z lokalnym modelem: docker compose --profile ai up -d
 #   następnie: docker compose exec ollama ollama pull SpeakLeash/bielik-11b-v2.3-instruct:Q4_K_M
 services:
   app:
     build: .
-    ports: ["3001:3001"]
+    ports: ["3000:3000"]
     volumes: ["udipilot-data:/data"]
     environment:
       - LLM_BASE_URL=${LLM_BASE_URL:-}

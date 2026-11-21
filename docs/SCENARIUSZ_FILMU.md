@@ -1,7 +1,7 @@
 # Scenariusz filmu (maks. 3:00)
 
 **Przed nagraniem**
-1. `npm start` → otwórz http://127.0.0.1:3001 w przeglądarce, okno ok. 1440×900, zoom 100%.
+1. `npm start` → otwórz http://127.0.0.1:3000 w przeglądarce, okno ok. 1440×900, zoom 100%.
 2. Zakładka „Bezpieczeństwo i AI” → **„Przywróć dane demo”** (czyste dane, kolory terminów aktualne na dziś).
 3. Pliki pod ręką: folder `samples/` (`wniosek_place_zabaw.pdf`, `odpowiedz_WGK_place_zabaw.docx`, `odpowiedz_BCB_monitoring.docx`).
 4. Nagrywanie: Windows **Win + Alt + R** (Xbox Game Bar) albo Clipchamp → „Nagraj ekran”. Lektor można dograć osobno.

@@ -535,7 +535,7 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: status >= 500 ? 'Błąd serwera: ' + err.message : err.message });
 });
 
-const port = +process.env.PORT || 3001;
+const port = +process.env.PORT || 3000;
 const host = process.env.HOST || '127.0.0.1';
 app.listen(port, host, () => {
   const s = llmStatus();
