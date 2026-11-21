@@ -1,0 +1,25 @@
+# Uruchomienie: docker compose up -d   →  http://localhost:3001
+# Profil z lokalnym modelem: docker compose --profile ai up -d
+#   następnie: docker compose exec ollama ollama pull SpeakLeash/bielik-11b-v2.3-instruct:Q4_K_M
+services:
+  app:
+    build: .
+    ports: ["3001:3001"]
+    volumes: ["udipilot-data:/data"]
+    environment:
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - LLM_API_KEY=${LLM_API_KEY:-ollama}
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.12.3
+    profiles: ["ai"]
+    volumes: ["ollama-models:/root/.ollama"]
+    # GPU (NVIDIA): odkomentuj
+    # deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+    restart: unless-stopped
+
+volumes:
+  udipilot-data:
+  ollama-models:

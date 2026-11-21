@@ -1,0 +1,174 @@
+// Generowanie projektu odpowiedzi. Zasada: treść merytoryczna pochodzi WYŁĄCZNIE z odpowiedzi wydziałów;
+// szablon dodaje tylko formuły prawne. Każdy akapit merytoryczny ma wskazane źródło.
+import { BM25, overlap, sentences, truncate } from './text.js';
+import { RESPONSE_TYPES, departments } from './analysis.js';
+import { addDays, today } from './deadlines.js';
+
+const plDate = (s) => (s ? s.split('-').reverse().join('.') + ' r.' : '[data]');
+
+// Podział odpowiedzi wydziału na fragmenty „Ad 1”, „Ad. 2”, „1.” …
+export function segmentResponse(text) {
+  const clean = text
+    .replace(/\r/g, '')
+    .split('\n')
+    .filter((l) => !/^\s*(z poważaniem|z wyrazami szacunku|w odpowiedzi na (?:pismo|maila|wiadomość|prośbę)|do wiadomości|sporządził|podpis|naczelnik wydziału\s*$|dyrektor biura\s*$)/i.test(l.trim()))
+    .join('\n');
+  const re = /(?:^|\n)\s*(?:Ad\.?\s*(\d{1,2})|pkt\.?\s*(\d{1,2})|(\d{1,2})[.)])\s*[:.)-]?\s*/gi;
+  const marks = [];
+  let m;
+  while ((m = re.exec(clean))) marks.push({ no: +(m[1] || m[2] || m[3]), idx: m.index, end: re.lastIndex });
+  if (!marks.length) return [{ no: null, text: clean.trim() }];
+  const segs = [];
+  for (let i = 0; i < marks.length; i++) {
+    const t = clean.slice(marks[i].end, marks[i + 1]?.idx ?? clean.length).replace(/\s+/g, ' ').trim();
+    if (t) segs.push({ no: marks[i].no, text: t });
+  }
+  return segs;
+}
+
+function answersFor(question, responses) {
+  const out = [];
+  for (const r of responses) {
+    const segs = segmentResponse(r.text);
+    const numbered = segs.filter((s) => s.no != null);
+    const assignedHere = (question.departments || []).includes(r.department);
+    if (numbered.length) {
+      const hit = numbered.find((s) => s.no === question.no);
+      if (hit) out.push({ text: hit.text, source: r, how: `fragment „Ad ${question.no}” odpowiedzi ${r.department}` });
+      continue;
+    }
+    const whole = segs[0]?.text || '';
+    if (!whole) continue;
+    if (assignedHere && r.__questionsForDept === 1) {
+      out.push({ text: whole.replace(/\s+/g, ' '), source: r, how: `cała odpowiedź ${r.department}` });
+    } else {
+      // dopasowanie zdań do pytania
+      const idx = new BM25(sentences(whole).map((s, i) => ({ id: i, text: s })));
+      const hits = idx.search(question.text, { limit: 3 }).filter((h) => h.relevance >= 40 && h.matched.length >= 2);
+      if (hits.length && (assignedHere || hits[0].matched.length >= 3)) {
+        const ordered = hits.sort((a, b) => a.doc.id - b.doc.id).map((h) => h.doc.text).join(' ');
+        out.push({ text: ordered, source: r, how: `zdania dopasowane do pytania z odpowiedzi ${r.department}` });
+      }
+    }
+  }
+  return out;
+}
+
+export function buildDraft(caseData, { type = 'udostepnienie', extension, bipLink, reason } = {}) {
+  const { wniosek, questions, responses } = caseData;
+  const counts = {};
+  for (const q of questions) for (const d of q.departments || []) counts[d] = (counts[d] || 0) + 1;
+  for (const r of responses) r.__questionsForDept = counts[r.department] || 0;
+
+  const blocks = [];
+  const T = (kind, text) => blocks.push({ id: `b${blocks.length + 1}`, kind, text, sources: [] });
+  const year = (wniosek.received_at || today()).slice(0, 4);
+  const sign = `BKS.1431.${String(wniosek.number).split('/')[0].replace(/\D/g, '') || wniosek.id}.${year}`;
+
+  T('header', `Bydgoszcz, dnia ${plDate(today())}`);
+  T('header', sign);
+  T('address', [wniosek.requester || '[Wnioskodawca]', wniosek.requester_contact || ''].filter(Boolean).join('\n'));
+
+  const intro = `W odpowiedzi na wniosek z dnia ${plDate(wniosek.request_date || wniosek.received_at)} (data wpływu do Urzędu: ${plDate(wniosek.received_at)}) o udostępnienie informacji publicznej`;
+  const law = 'ustawy z dnia 6 września 2001 r. o dostępie do informacji publicznej';
+  const missing = [];
+
+  if (type === 'udostepnienie') {
+    T('intro', `${intro}, działając na podstawie art. 2 ust. 1 i art. 10 ust. 1 ${law}, uprzejmie informuję:`);
+    for (const q of questions) {
+      const ans = answersFor(q, responses);
+      if (!ans.length) {
+        missing.push(q.no);
+        blocks.push({ id: `b${blocks.length + 1}`, kind: 'missing', questionNo: q.no, question: q.text, text: `Ad ${q.no}. [BRAK ODPOWIEDZI WYDZIAŁU – uzupełnij lub wyślij ponowne zapytanie do: ${(q.departments || []).join(', ') || 'wydział nieprzypisany'}]`, sources: [] });
+        continue;
+      }
+      blocks.push({
+        id: `b${blocks.length + 1}`,
+        kind: 'answer',
+        questionNo: q.no,
+        question: q.text,
+        text: `Ad ${q.no}. ${ans.map((a) => a.text).join(' ')}`,
+        sources: ans.map((a) => ({ responseId: a.source.id, department: a.source.department, file: a.source.filename, how: a.how, excerpt: truncate(a.text, 400) })),
+      });
+    }
+  } else if (type === 'przedluzenie') {
+    const date = extension || addDays(wniosek.received_at, 60);
+    T('intro', `${intro}, działając na podstawie art. 13 ust. 2 ${law}, uprzejmie zawiadamiam, że wnioskowana informacja nie może zostać udostępniona w terminie 14 dni od dnia złożenia wniosku.`);
+    T('template', `Powodem opóźnienia jest ${reason || 'konieczność przeprowadzenia kwerendy w dokumentacji archiwalnej oraz zebrania informacji z kilku komórek organizacyjnych Urzędu'}.`);
+    T('template', `Informacja zostanie udostępniona w terminie do dnia ${plDate(date)}.`);
+  } else if (type === 'przetworzona') {
+    T('intro', `${intro}, uprzejmie informuję, że żądana informacja ma charakter informacji przetworzonej – jej przygotowanie wymaga ${reason || 'analizy i zestawienia danych z wielu dokumentów, a tym samym zaangażowania znacznych zasobów osobowych i czasowych Urzędu'}.`);
+    T('template', `W związku z powyższym, na podstawie art. 3 ust. 1 pkt 1 ${law}, wzywam do wykazania, w terminie 14 dni od dnia doręczenia niniejszego pisma, że uzyskanie wnioskowanej informacji jest szczególnie istotne dla interesu publicznego.`);
+    T('template', 'Nieudzielenie odpowiedzi na wezwanie może skutkować wydaniem decyzji o odmowie udostępnienia informacji publicznej.');
+  } else if (type === 'bip') {
+    T('intro', `${intro}, uprzejmie informuję, że wnioskowana informacja została udostępniona w Biuletynie Informacji Publicznej Urzędu Miasta Bydgoszczy pod adresem: ${bipLink || '[wklej link do BIP]'}.`);
+    T('template', 'Informacja publiczna udostępniona w BIP nie podlega ponownemu udostępnieniu w trybie wnioskowym (art. 10 ust. 1 ustawy o dostępie do informacji publicznej).');
+  } else if (type === 'nie_ip') {
+    T('intro', `${intro}, uprzejmie informuję, że przedstawione żądanie nie stanowi wniosku o udostępnienie informacji publicznej w rozumieniu art. 1 ust. 1 i art. 6 ${law}, ponieważ ${reason || 'dotyczy wyjaśnienia lub interpretacji przepisów, a nie informacji o sprawach publicznych istniejącej w zasobach Urzędu'}.`);
+    T('template', 'Niniejsze pismo ma charakter informacyjny i nie jest decyzją administracyjną.');
+  } else if (type === 'odmowa') {
+    T('title', 'DECYZJA');
+    T('intro', `Na podstawie art. 16 ust. 1 w związku z art. 5 ust. 2 ${law} oraz art. 104 Kodeksu postępowania administracyjnego, po rozpatrzeniu wniosku z dnia ${plDate(wniosek.request_date || wniosek.received_at)},`);
+    T('title', 'odmawiam');
+    T('template', `udostępnienia informacji publicznej w zakresie: ${reason || '[wskaż zakres]'}.`);
+    T('title', 'UZASADNIENIE');
+    T('template', '[Uzasadnienie faktyczne i prawne – wskaż chronione dobro (prywatność osoby fizycznej / tajemnica przedsiębiorcy) oraz osoby, które zgłosiły zastrzeżenie, jeśli dotyczy.]');
+    T('title', 'POUCZENIE');
+    T('template', 'Od niniejszej decyzji przysługuje odwołanie do Samorządowego Kolegium Odwoławczego w Bydgoszczy, za pośrednictwem Prezydenta Miasta Bydgoszczy, w terminie 14 dni od dnia jej doręczenia.');
+  }
+
+  T('closing', 'Z poważaniem');
+  T('signature', '[podpis osoby upoważnionej]');
+
+  return { type, typeLabel: RESPONSE_TYPES[type]?.label, basis: RESPONSE_TYPES[type]?.basis, blocks, missing, generatedAt: new Date().toISOString() };
+}
+
+// Weryfikacja projektu (także po ręcznej edycji): czy każde zdanie merytoryczne ma oparcie w źródłach
+// i czy wszystkie liczby/kwoty/daty występują w odpowiedziach wydziałów.
+const NUM_RE = /\d{1,3}(?:[  ]\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?/g;
+const numbers = (s) => (s.match(NUM_RE) || []).map((n) => n.replace(/[\s ]/g, '').replace(',', '.'));
+
+export function verifyDraft(draft, responses) {
+  const all = responses.map((r) => r.text).join('\n');
+  const numsInSources = new Set(numbers(all));
+  const issues = [];
+  for (const b of draft.blocks) {
+    if (b.kind !== 'answer') continue;
+    const body = b.text.replace(/^Ad \d+\.\s*/, '');
+    const src = (b.sources || []).map((s) => s.excerpt).join(' ') || all;
+    for (const s of sentences(body)) {
+      const ov = Math.max(overlap(s, src), overlap(s, all));
+      const nums = numbers(s);
+      const badNums = nums.filter((n) => !numsInSources.has(n));
+      if (ov < 0.5 || badNums.length) {
+        issues.push({
+          blockId: b.id,
+          sentence: s,
+          reason: badNums.length
+            ? `Liczby niewystępujące w odpowiedziach wydziałów: ${badNums.join(', ')}`
+            : `Zdanie bez wyraźnego potwierdzenia w źródłach (pokrycie ${Math.round(ov * 100)}%)`,
+        });
+      }
+    }
+  }
+  return { ok: issues.length === 0 && !draft.blocks.some((b) => b.kind === 'missing'), issues, missing: draft.blocks.filter((b) => b.kind === 'missing').map((b) => b.questionNo) };
+}
+
+export function draftToText(draft) {
+  return draft.blocks.map((b) => b.text).join('\n\n');
+}
+
+export function departmentRequestText(wniosek, questions, code, deadline) {
+  const dept = departments.find((d) => d.code === code);
+  const qs = questions.filter((q) => (q.departments || []).includes(code));
+  return [
+    `Do: ${dept?.name || code}`,
+    `Dotyczy: wniosek o udostępnienie informacji publicznej nr ${wniosek.number} z dnia ${plDate(wniosek.received_at)}`,
+    '',
+    'Uprzejmie proszę o przygotowanie odpowiedzi na następujące pytania wnioskodawcy (proszę oznaczać odpowiedzi numerami „Ad …”):',
+    ...qs.map((q) => `${q.no}. ${q.text}`),
+    '',
+    `Termin przekazania odpowiedzi: ${plDate(addDays(deadline, -3))} (termin ustawowy: ${plDate(deadline)}).`,
+    'Proszę o wskazanie fragmentów zawierających dane osobowe lub tajemnicę przedsiębiorcy.',
+  ].join('\n');
+}
