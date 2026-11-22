@@ -358,3 +358,10 @@ table.t td .mono { font-family: inherit; font-size: 12.5px; font-variant-numeric
 .srcchip.on { background: var(--primary-soft); border-color: var(--primary-2, var(--primary)); }
 .src-excerpt { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
 .editor-side .src { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* wykryte lokalne serwery AI */
+.ai-scan { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); margin-bottom: 10px; }
+.ai-server { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; background: var(--surface); border: 1.5px solid var(--border); font-size: 13px; }
+.ai-server:hover { background: var(--primary-soft); }
+.ai-server.on { border-color: var(--primary); background: var(--primary-soft); }
+.ai-server .lucide { width: 16px; height: 16px; color: var(--green); }

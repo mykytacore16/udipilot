@@ -14,7 +14,7 @@ import { analyze as findPII, mergeOverlaps, assignLabels } from './lib/anonymize
 import { buildDraft, verifyDraft, draftToText, departmentRequestText } from './lib/draft.js';
 import { toDocx, toText } from './lib/exporter.js';
 import { llmStatus, polishParagraph, findPersonalData, splitWithLLM, testConnection } from './lib/llm.js';
-import { PROVIDERS, readSettings, writeSettings, clearSettings, activeConfig, maskKey, isLocalUrl } from './lib/settings.js';
+import { PROVIDERS, readSettings, writeSettings, clearSettings, activeConfig, maskKey, isLocalUrl, LOCAL_SERVERS } from './lib/settings.js';
 import { seedDemo } from './seed.js';
 import { parseRegistry, registryXlsx, numberSeq, makeNumber } from './lib/registry.js';
 import { importRecords } from './importer.js';
@@ -574,6 +574,39 @@ app.get('/api/ai/ollama', wrap(async (req, res) => {
   } catch {
     res.json({ running: false, models: [], pull: pullJob });
   }
+}));
+
+// Lista modeli z dowolnego serwera zgodnego z OpenAI (GET {baseUrl}/models); dla Ollamy także /api/tags.
+async function listModels(baseUrl, apiKey) {
+  const base = baseUrl.replace(/\/$/, '');
+  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+  try {
+    const r = await fetch(`${base}/models`, { headers, signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      const d = await r.json();
+      const ids = (d.data || d.models || []).map((m) => m.id || m.name).filter(Boolean);
+      return { ok: true, models: [...new Set(ids)] };
+    }
+  } catch { /* spróbuj API Ollamy */ }
+  try {
+    const r = await fetch(`${base.replace(/\/v1$/, '')}/api/tags`, { signal: AbortSignal.timeout(1500) });
+    if (r.ok) return { ok: true, models: ((await r.json()).models || []).map((m) => m.name) };
+  } catch { /* brak serwera */ }
+  return { ok: false, models: [] };
+}
+
+// Automatyczne wykrywanie lokalnych serwerów AI na typowych portach (tylko 127.0.0.1).
+app.get('/api/ai/local', wrap(async (req, res) => {
+  const found = await Promise.all(LOCAL_SERVERS.map(async (s) => ({ ...s, ...(await listModels(s.baseUrl)) })));
+  res.json({ servers: found.filter((s) => s.ok) });
+}));
+
+// Modele z serwera o podanym adresie (pole „Adres serwera”).
+app.post('/api/ai/models', wrap(async (req, res) => {
+  const baseUrl = String(req.body?.baseUrl || '').trim();
+  if (!/^https?:\/\//.test(baseUrl)) throw httpError(400, 'Podaj adres serwera (http://…)');
+  const r = await listModels(baseUrl, String(req.body?.apiKey || ''));
+  res.json({ ...r, local: isLocalUrl(baseUrl) });
 }));
 
 let pullJob = null;

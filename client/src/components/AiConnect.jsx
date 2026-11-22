@@ -1,15 +1,29 @@
-import { AlertTriangle, Bot, Check, Cloud, Download, HardDrive, Plug, Server, Sparkles, Unplug } from 'lucide-react';
+import { AlertTriangle, Bot, Check, Cloud, Cpu, Download, HardDrive, Plug, RefreshCw, Search, Server, Sparkles, Unplug } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { Modal, Spinner, useToast } from './ui.jsx';
 
 const ORDER = [
   { id: 'ollama', icon: HardDrive, hint: 'Na komputerze Urzędu. Zalecane.' },
+  { id: 'local', icon: Cpu, hint: 'LM Studio, llama.cpp, vLLM, Jan, GPT4All…' },
   { id: 'anthropic', icon: Sparkles, hint: 'Klucz z console.anthropic.com' },
   { id: 'openai', icon: Bot, hint: 'Klucz z platform.openai.com' },
   { id: 'gemini', icon: Cloud, hint: 'Klucz z aistudio.google.com' },
-  { id: 'custom', icon: Server, hint: 'vLLM, LM Studio, PLLuM…' },
+  { id: 'custom', icon: Server, hint: 'Dowolny serwer zgodny z OpenAI' },
 ];
+
+// Ta sama reguła co na serwerze: ten komputer albo sieć wewnętrzna Urzędu.
+export function isLocalUrl(url) {
+  let host;
+  try { host = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, ''); } catch { return false; }
+  if (!host) return false;
+  if (host === 'localhost' || host.endsWith('.localhost') || host === '::1' || host === 'host.docker.internal') return true;
+  if (host.endsWith('.local') || host.endsWith('.lan') || host.endsWith('.internal')) return true;
+  if (!host.includes('.') && !host.includes(':')) return true;
+  const m = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (m) { const [a, b] = [+m[1], +m[2]]; return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31); }
+  return /^f[cd][0-9a-f]{2}:/.test(host);
+}
 
 const gb = (n) => (n / 1e9).toFixed(1).replace('.', ',') + ' GB';
 
@@ -22,6 +36,8 @@ export default function AiConnect({ onClose, onChanged }) {
   const [test, setTest] = useState(null);
   const [busy, setBusy] = useState('');
   const [ollama, setOllama] = useState(null);
+  const [scan, setScan] = useState(null); // wykryte lokalne serwery
+  const [models, setModels] = useState(null); // modele z serwera pod wpisanym adresem
 
   useEffect(() => {
     api.get('/api/ai').then((d) => {
@@ -46,19 +62,41 @@ export default function AiConnect({ onClose, onChanged }) {
     return () => clearTimeout(t);
   }, [ollama]);
 
+  const runScan = () => { setScan('busy'); api.get('/api/ai/local').then((d) => setScan(d.servers)).catch(() => setScan([])); };
+  useEffect(() => { if (provider === 'local' && scan === null) runScan(); }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
+  // pierwszy wykryty serwer wybierany automatycznie, jeśli adres jest pusty
+  useEffect(() => {
+    if (provider !== 'local' || !Array.isArray(scan) || !scan.length || form.baseUrl) return;
+    setForm((f) => ({ ...f, baseUrl: scan[0].baseUrl, model: scan[0].models[0] || '' }));
+    setModels(scan[0].models);
+  }, [scan]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!info) return <Modal title="Podłącz AI" onClose={onClose}><Spinner /></Modal>;
 
   const P = info.providers;
   const p = P[provider];
   const saved = info.settings;
-  const isCloud = provider === 'anthropic' || (provider === 'custom' ? !/localhost|127\.0\.0\.1|\[::1\]|\.local\b|:11434/.test(form.baseUrl) : !p.local);
+  const isCloud = p.needsKey || (!!form.baseUrl && !isLocalUrl(form.baseUrl));
   const pick = (id) => {
     setProvider(id);
     setTest(null);
     const same = saved?.provider === id;
     setForm({ model: same ? saved.model : P[id].model, baseUrl: same ? saved.baseUrl : P[id].baseUrl, apiKey: '' });
     setAccepted(same && saved.cloudAccepted);
+    setModels(null);
   };
+  const useServer = (sv) => { setForm({ ...form, baseUrl: sv.baseUrl, model: sv.models.includes(form.model) ? form.model : sv.models[0] || '' }); setModels(sv.models); setTest(null); };
+  const fetchModels = async () => {
+    setBusy('models');
+    try {
+      const r = await api.post('/api/ai/models', { baseUrl: form.baseUrl, apiKey: form.apiKey });
+      setModels(r.models);
+      if (!r.ok) toast('Serwer nie odpowiada pod tym adresem', 'err');
+      else if (!form.model && r.models[0]) setForm({ ...form, model: r.models[0] });
+    } catch (e) { toast(e.message, 'err'); }
+    setBusy('');
+  };
+  const suggestions = provider === 'ollama' ? (ollama?.models || []).map((m) => m.name) : models || [];
   const body = () => ({ provider, ...form, cloudAccepted: accepted });
   const keyStored = saved?.provider === provider && saved.hasKey;
   const bielikReady = ollama?.models?.some((m) => m.name === (form.model || P.ollama.model));
@@ -110,7 +148,7 @@ export default function AiConnect({ onClose, onChanged }) {
             <Icon />
             <span className="ai-name">{P[id].label}</span>
             <span className="ai-hint">{hint}</span>
-            <span className={`ai-tag ${id === 'ollama' ? 'loc' : id === 'custom' ? '' : 'cloud'}`}>{id === 'ollama' ? 'Lokalnie' : id === 'custom' ? 'Zależy od adresu' : 'Chmura'}</span>
+            <span className={`ai-tag ${id === 'ollama' || id === 'local' ? 'loc' : id === 'custom' ? '' : 'cloud'}`}>{id === 'ollama' || id === 'local' ? 'Lokalnie' : id === 'custom' ? 'Zależy od adresu' : 'Chmura'}</span>
           </button>
         ))}
       </div>
@@ -126,7 +164,7 @@ export default function AiConnect({ onClose, onChanged }) {
           </label>
         </div>
       ) : (
-        <div className="alert ok"><HardDrive /> Model działa na tym komputerze – dane nie opuszczają Urzędu.</div>
+        <div className="alert ok"><HardDrive /> Model działa na tym komputerze lub w sieci Urzędu – dane nie opuszczają Urzędu.</div>
       )}
 
       <div className="ai-form">
@@ -150,18 +188,38 @@ export default function AiConnect({ onClose, onChanged }) {
             )}
           </div>
         )}
-        {(provider === 'custom' || provider === 'ollama') && (
+        {provider === 'local' && (
+          <div className="ai-scan">
+            <div className="spread">
+              <span className="small"><b>Wykryte na tym komputerze</b></span>
+              <button className="btn sm ghost" onClick={runScan} disabled={scan === 'busy'}>{scan === 'busy' ? <Spinner /> : <RefreshCw />} Szukaj ponownie</button>
+            </div>
+            {scan === 'busy' || scan === null ? <div className="small muted">Sprawdzam typowe porty (Ollama, LM Studio, llama.cpp, vLLM, Jan…)</div>
+              : scan.length === 0 ? <div className="small muted">Nie znaleziono uruchomionego serwera. Włącz serwer w swoim programie (np. LM Studio → Developer → Start Server) i kliknij „Szukaj ponownie” albo wpisz adres poniżej.</div>
+              : scan.map((sv) => (
+                <button key={sv.baseUrl} className={`ai-server ${form.baseUrl === sv.baseUrl ? 'on' : ''}`} onClick={() => useServer(sv)}>
+                  <Cpu /><b>{sv.name}</b><span className="muted">{sv.baseUrl}</span>
+                  <span className="muted" style={{ marginLeft: 'auto' }}>{sv.models.length} {sv.models.length === 1 ? 'model' : 'modeli'}</span>
+                </button>
+              ))}
+          </div>
+        )}
+        {(provider === 'custom' || provider === 'ollama' || provider === 'local') && (
           <label className="field">Adres serwera
-            <input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder="http://127.0.0.1:8000/v1" />
+            <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+              <input style={{ flex: 1 }} value={form.baseUrl} onChange={(e) => { setForm({ ...form, baseUrl: e.target.value }); setModels(null); }} placeholder="http://127.0.0.1:1234/v1" />
+              {provider !== 'ollama' && <button type="button" className="btn sm" onClick={fetchModels} disabled={!!busy || !form.baseUrl}>{busy === 'models' ? <Spinner /> : <Search />} Pobierz listę modeli</button>}
+            </div>
           </label>
         )}
-        {(p.needsKey || provider === 'custom') && (
-          <label className="field">Klucz API {keyStored && <span className="muted">(zapisany: {saved.key} – zostaw puste, aby nie zmieniać)</span>}
-            <input type="password" autoComplete="off" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={keyStored ? '••••••••' : provider === 'anthropic' ? 'sk-ant-…' : provider === 'gemini' ? 'AIza…' : 'sk-…'} />
+        {(p.needsKey || provider === 'custom' || provider === 'local') && (
+          <label className="field"><span>Klucz API{!p.needsKey && <span className="muted"> (opcjonalnie)</span>} {keyStored && <span className="muted">(zapisany: {saved.key} – zostaw puste, aby nie zmieniać)</span>}</span>
+            <input type="password" autoComplete="off" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={keyStored ? '••••••••' : provider === 'anthropic' ? 'sk-ant-…' : provider === 'gemini' ? 'AIza…' : p.needsKey ? 'sk-…' : 'zwykle niepotrzebny'} />
           </label>
         )}
-        <label className="field">Model
-          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={p.model} />
+        <label className="field"><span>Model{suggestions.length > 0 && <span className="muted"> · {suggestions.length} dostępnych – kliknij pole, aby wybrać</span>}</span>
+          <input list="ai-models" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={p.model || 'nazwa modelu'} />
+          <datalist id="ai-models">{suggestions.map((m) => <option key={m} value={m} />)}</datalist>
         </label>
         {p.needsKey && <div className="small muted">Klucz jest zapisywany tylko lokalnie (data/settings.json) i nie trafia do repozytorium.</div>}
       </div>
