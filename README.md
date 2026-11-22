@@ -11,6 +11,8 @@ Działa **w 100% offline** (reguły, wyszukiwanie lokalne). Model językowy jest
 | **Import arkusza UMB z wykrytymi niezgodnościami** | **„Podłącz AI”: lokalny Bielik domyślnie** |
 | ![Import z Excela](docs/img/03_import_niezgodnosci.png) | ![Podłącz AI](docs/img/12_podlacz_ai.png) |
 
+> 🎬 **Film demo (3 min):** https://youtu.be/sH8Qo3IfCAs
+>
 > **Dla jury – najszybciej:** Code → Download ZIP → rozpakuj → `INSTALUJ.bat` → w kreatorze **Zainstaluj** → **Uruchom UDIPilot** (http://localhost:3000). Szczegóły i rozwiązywanie problemów: [docs/JAK_URUCHOMIC.md](docs/JAK_URUCHOMIC.md).
 
 ## Szybki start
