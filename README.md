@@ -3,6 +3,16 @@
 Prototyp na HackNation 2026 (wyzwanie Urzędu Miasta Bydgoszczy): **rejestr i kalendarz wniosków UDIP + generator projektów odpowiedzi + anonimizacja danych**.
 Działa **w 100% offline** (reguły, wyszukiwanie lokalne). Model językowy jest opcjonalny i podłączany przyciskiem **„Podłącz AI”** – domyślnie lokalny **Bielik** (Ollama), opcjonalnie do testów Claude / GPT / Gemini (z ostrzeżeniem, że dane opuszczają Urząd).
 
+| Rejestr i kalendarz wniosków | Nowy wniosek: pytania, wydziały, podobne sprawy |
+|---|---|
+| ![Rejestr wniosków](docs/img/01_rejestr_wnioskow.png) | ![Nowy wniosek](docs/img/04_nowy_wniosek.png) |
+| **Projekt pisma: edytor z kontrolą źródeł** | **Anonimizacja: dane fizycznie usunięte** |
+| ![Projekt pisma](docs/img/07_projekt_pisma_edytor.png) | ![Anonimizacja](docs/img/09_anonimizacja_zaczernione.png) |
+| **Import arkusza UMB z wykrytymi niezgodnościami** | **„Podłącz AI”: lokalny Bielik domyślnie** |
+| ![Import z Excela](docs/img/03_import_niezgodnosci.png) | ![Podłącz AI](docs/img/12_podlacz_ai.png) |
+
+> **Dla jury – najszybciej:** Code → Download ZIP → rozpakuj → `INSTALUJ.bat` → w kreatorze **Zainstaluj** → **Uruchom UDIPilot** (http://localhost:3000). Szczegóły i rozwiązywanie problemów: [docs/JAK_URUCHOMIC.md](docs/JAK_URUCHOMIC.md).
+
 ## Szybki start
 
 **Instalacja jednym kliknięciem:** pobierz repozytorium (Code → Download ZIP), rozpakuj i uruchom **`INSTALUJ.bat`** (Windows) lub **`./instaluj.sh`** (macOS/Linux). Otworzy się **kreator instalacji w przeglądarce** (styl aplikacji): kontrola komputera, przełączniki opcji (lokalny Bielik, skrót na pulpicie), postęp każdego kroku z paskiem pobierania modelu i przycisk **Uruchom UDIPilot**. Brakujący Node.js instalowany jest automatycznie (winget/Homebrew). Kreator: `installer/` – tylko moduły wbudowane Node.js. Kolejne uruchomienia: **`URUCHOM.bat`** / `./uruchom.sh`.
@@ -54,6 +64,7 @@ Gotowa sprawa demo: **BKS.IV.1431.603.2026** (termin w najbliższy dzień robocz
 - **Treść zapytania do wydziału** z terminem wewnętrznym (do skopiowania – system niczego nie wysyła).
 - **Projekt odpowiedzi** – 6 typów pism: udostępnienie, zawiadomienie o przedłużeniu, wezwanie (informacja przetworzona), odesłanie do BIP, „to nie jest informacja publiczna”, szkielet decyzji odmownej z pouczeniem.
 - **Ochrona przed halucynacjami** – treść merytoryczna wyłącznie z odpowiedzi wydziałów, przy każdym akapicie źródło; automatyczna weryfikacja zdań bez pokrycia i **liczb spoza źródeł**; wykrywanie pytań bez odpowiedzi.
+- **Edytor pisma** – całe pismo w jednym dokumencie (jak w Wordzie), sekcje „Ad N” na marginesie, chronione granice sekcji, panel ze strukturą pisma i źródłem akapitu, Ctrl+S = zapisz i zweryfikuj.
 - **Anonimizacja** – PESEL/NIP/REGON/IBAN z sumami kontrolnymi, telefon, e-mail, adres, dowód, data urodzenia, nr rej., KW, imiona i nazwiska (słownik + odmiana + kontekst), ostrzeżenie dla osób pełniących funkcje publiczne. Propozycje na szaro → po akceptacji na czarno; ręczne zaznaczanie myszką; spójne aliasy (Osoba A, B…). W DOCX dane są **fizycznie usuwane**.
 - **Uczenie na danych Urzędu** – wysłane odpowiedzi trafiają (po anonimizacji) do archiwum i są podpowiadane przy kolejnych wnioskach; baza wiedzy przyjmuje ustawy, zarządzenia i archiwum.
 

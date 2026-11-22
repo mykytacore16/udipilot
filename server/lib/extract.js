@@ -17,7 +17,7 @@ export async function extractFromFile(file) {
     const joined = (Array.isArray(text) ? text : [text]).join('\n\n');
     const clean = tidy(joined);
     if (clean.replace(/\s/g, '').length < 20) {
-      throw httpError(422, 'PDF nie zawiera warstwy tekstowej (skan). W wersji wdrożeniowej plik trafi do lokalnego OCR (Tesseract, język polski). Na potrzeby demo wgraj PDF z tekstem lub DOCX.');
+      throw httpError(422, 'PDF nie zawiera warstwy tekstowej (skan). W wersji wdrożeniowej plik trafi do lokalnego OCR (Tesseract, język polski). Teraz: wklej treść wniosku w polu tekstowym obok albo wgraj PDF z tekstem lub DOCX.');
     }
     return { text: clean, filename: name, pages: totalPages, format: 'pdf' };
   }
